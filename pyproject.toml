@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zoreza-corte-semanal"
+version = "0.1.0"
+description = "Zoreza · Corte Semanal (Streamlit + SQLite) MVP"
+requires-python = ">=3.10"
+dependencies = [
+  "streamlit>=1.33",
+  "pandas>=2.0.0",
+]
+
+[tool.setuptools]
+packages = ["zoreza"]
+include-package-data = false

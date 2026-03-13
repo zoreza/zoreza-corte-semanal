@@ -13,14 +13,20 @@ import sqlite3
 from pathlib import Path
 from zoreza.db.core import db_path, now_iso
 
-def migrate():
-    """Ejecuta la migración de la base de datos."""
+def migrate(silent: bool = False):
+    """Ejecuta la migración de la base de datos.
+    
+    Args:
+        silent: Si es True, no imprime mensajes (útil para Streamlit)
+    """
     path = db_path()
     if not Path(path).exists():
-        print(f"❌ Base de datos no encontrada en: {path}")
+        if not silent:
+            print(f"❌ Base de datos no encontrada en: {path}")
         return False
     
-    print(f"🔄 Iniciando migración de: {path}")
+    if not silent:
+        print(f"🔄 Iniciando migración de: {path}")
     con = sqlite3.connect(path)
     con.row_factory = sqlite3.Row
     
@@ -30,26 +36,31 @@ def migrate():
         columns = [row[1] for row in cursor.fetchall()]
         
         if 'domicilio' in columns:
-            print("✅ La migración ya fue ejecutada anteriormente.")
+            if not silent:
+                print("✅ La migración ya fue ejecutada anteriormente.")
             return True
         
-        print("📝 Aplicando cambios al esquema...")
+        if not silent:
+            print("📝 Aplicando cambios al esquema...")
         
         # 1. Agregar campos opcionales a clientes
-        print("  → Agregando campos a tabla 'clientes'...")
+        if not silent:
+            print("  → Agregando campos a tabla 'clientes'...")
         con.execute("ALTER TABLE clientes ADD COLUMN domicilio TEXT")
         con.execute("ALTER TABLE clientes ADD COLUMN colonia TEXT")
         con.execute("ALTER TABLE clientes ADD COLUMN telefono TEXT")
         con.execute("ALTER TABLE clientes ADD COLUMN poblacion TEXT")
         
         # 2. Agregar campos a maquinas
-        print("  → Agregando campos a tabla 'maquinas'...")
+        if not silent:
+            print("  → Agregando campos a tabla 'maquinas'...")
         con.execute("ALTER TABLE maquinas ADD COLUMN numero_permiso TEXT")
         con.execute("ALTER TABLE maquinas ADD COLUMN fecha_permiso TEXT")
         con.execute("ALTER TABLE maquinas ADD COLUMN asignada INTEGER NOT NULL DEFAULT 1 CHECK (asignada IN (0,1))")
         
         # 3. Crear tabla cliente_ruta
-        print("  → Creando tabla 'cliente_ruta'...")
+        if not silent:
+            print("  → Creando tabla 'cliente_ruta'...")
         con.execute("""
             CREATE TABLE IF NOT EXISTS cliente_ruta(
                 cliente_id INTEGER NOT NULL,
@@ -64,7 +75,8 @@ def migrate():
         """)
         
         # 4. Migrar datos de maquina_ruta a cliente_ruta
-        print("  → Migrando asignaciones de Máquina→Ruta a Cliente→Ruta...")
+        if not silent:
+            print("  → Migrando asignaciones de Máquina→Ruta a Cliente→Ruta...")
         
         # Obtener todas las asignaciones actuales de maquina_ruta
         maquina_rutas = con.execute("""
@@ -85,31 +97,35 @@ def migrate():
             """, (row[0], row[1], row[2], ts))
             migrated += 1
         
-        print(f"  ✓ Migradas {migrated} asignaciones únicas de Cliente→Ruta")
+        if not silent:
+            print(f"  ✓ Migradas {migrated} asignaciones únicas de Cliente→Ruta")
         
         # 5. Crear índices para mejor performance
-        print("  → Creando índices...")
+        if not silent:
+            print("  → Creando índices...")
         con.execute("CREATE INDEX IF NOT EXISTS idx_maquinas_asignada ON maquinas(asignada)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_cliente_ruta ON cliente_ruta(cliente_id, ruta_id)")
         
         con.commit()
-        print("✅ Migración completada exitosamente!")
-        print("\n📋 Resumen de cambios:")
-        print("  • Clientes: +4 campos opcionales (domicilio, colonia, telefono, poblacion)")
-        print("  • Máquinas: +3 campos (numero_permiso, fecha_permiso, asignada)")
-        print("  • Nueva tabla: cliente_ruta")
-        print(f"  • Asignaciones migradas: {migrated}")
-        print("\n⚠️  IMPORTANTE:")
-        print("  • La tabla 'maquina_ruta' se mantiene para compatibilidad")
-        print("  • Ahora las asignaciones se hacen por Cliente→Ruta")
-        print("  • Las máquinas heredan la ruta de su cliente")
-        print("  • Puedes desasignar máquinas marcando 'asignada=0'")
+        if not silent:
+            print("✅ Migración completada exitosamente!")
+            print("\n📋 Resumen de cambios:")
+            print("  • Clientes: +4 campos opcionales (domicilio, colonia, telefono, poblacion)")
+            print("  • Máquinas: +3 campos (numero_permiso, fecha_permiso, asignada)")
+            print("  • Nueva tabla: cliente_ruta")
+            print(f"  • Asignaciones migradas: {migrated}")
+            print("\n⚠️  IMPORTANTE:")
+            print("  • La tabla 'maquina_ruta' se mantiene para compatibilidad")
+            print("  • Ahora las asignaciones se hacen por Cliente→Ruta")
+            print("  • Las máquinas heredan la ruta de su cliente")
+            print("  • Puedes desasignar máquinas marcando 'asignada=0'")
         
         return True
         
     except Exception as e:
         con.rollback()
-        print(f"❌ Error durante la migración: {e}")
+        if not silent:
+            print(f"❌ Error durante la migración: {e}")
         return False
     finally:
         con.close()

@@ -28,18 +28,22 @@ def update_usuario(user_id: int, nombre: str, rol: str, activo: int, actor_id: i
 def list_clientes():
     return fetchall("SELECT * FROM clientes ORDER BY nombre")
 
-def create_cliente(nombre: str, comision_pct: float, activo: int, actor_id: int | None):
+def create_cliente(nombre: str, comision_pct: float, activo: int, actor_id: int | None,
+                   domicilio: str | None = None, colonia: str | None = None,
+                   telefono: str | None = None, poblacion: str | None = None):
     ts = now_iso()
     return execute_returning_id(
-        "INSERT INTO clientes(nombre,comision_pct,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,?,?,?)",
-        (nombre, float(comision_pct), int(activo), ts, ts, actor_id, actor_id),
+        "INSERT INTO clientes(nombre,comision_pct,domicilio,colonia,telefono,poblacion,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (nombre, float(comision_pct), domicilio, colonia, telefono, poblacion, int(activo), ts, ts, actor_id, actor_id),
     )
 
-def update_cliente(cliente_id: int, nombre: str, comision_pct: float, activo: int, actor_id: int | None):
+def update_cliente(cliente_id: int, nombre: str, comision_pct: float, activo: int, actor_id: int | None,
+                   domicilio: str | None = None, colonia: str | None = None,
+                   telefono: str | None = None, poblacion: str | None = None):
     ts = now_iso()
     execute(
-        "UPDATE clientes SET nombre=?, comision_pct=?, activo=?, updated_at=?, updated_by=? WHERE id=?",
-        (nombre, float(comision_pct), int(activo), ts, actor_id, cliente_id),
+        "UPDATE clientes SET nombre=?, comision_pct=?, domicilio=?, colonia=?, telefono=?, poblacion=?, activo=?, updated_at=?, updated_by=? WHERE id=?",
+        (nombre, float(comision_pct), domicilio, colonia, telefono, poblacion, int(activo), ts, actor_id, cliente_id),
     )
 
 def list_maquinas():
@@ -51,18 +55,20 @@ def list_maquinas():
         """
     )
 
-def create_maquina(codigo: str, cliente_id: int, activo: int, actor_id: int | None):
+def create_maquina(codigo: str, cliente_id: int, activo: int, actor_id: int | None,
+                   numero_permiso: str | None = None, fecha_permiso: str | None = None, asignada: int = 1):
     ts = now_iso()
     return execute_returning_id(
-        "INSERT INTO maquinas(codigo,cliente_id,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,?,?,?)",
-        (codigo, int(cliente_id), int(activo), ts, ts, actor_id, actor_id),
+        "INSERT INTO maquinas(codigo,cliente_id,numero_permiso,fecha_permiso,asignada,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (codigo, int(cliente_id), numero_permiso, fecha_permiso, int(asignada), int(activo), ts, ts, actor_id, actor_id),
     )
 
-def update_maquina(maquina_id: int, codigo: str, cliente_id: int, activo: int, actor_id: int | None):
+def update_maquina(maquina_id: int, codigo: str, cliente_id: int, activo: int, actor_id: int | None,
+                   numero_permiso: str | None = None, fecha_permiso: str | None = None, asignada: int = 1):
     ts = now_iso()
     execute(
-        "UPDATE maquinas SET codigo=?, cliente_id=?, activo=?, updated_at=?, updated_by=? WHERE id=?",
-        (codigo, int(cliente_id), int(activo), ts, actor_id, maquina_id),
+        "UPDATE maquinas SET codigo=?, cliente_id=?, numero_permiso=?, fecha_permiso=?, asignada=?, activo=?, updated_at=?, updated_by=? WHERE id=?",
+        (codigo, int(cliente_id), numero_permiso, fecha_permiso, int(asignada), int(activo), ts, actor_id, maquina_id),
     )
 
 def list_rutas():
@@ -116,6 +122,44 @@ def set_maquina_ruta(maquina_id: int, ruta_id: int, activo: int):
         "INSERT INTO maquina_ruta(maquina_id,ruta_id,activo) VALUES (?,?,?) "
         "ON CONFLICT(maquina_id,ruta_id) DO UPDATE SET activo=excluded.activo",
         (int(maquina_id), int(ruta_id), int(activo)),
+    )
+
+def list_cliente_ruta():
+    return fetchall(
+        """
+        SELECT cr.cliente_id, c.nombre AS cliente_nombre, cr.ruta_id, r.nombre AS ruta_nombre, cr.activo
+        FROM cliente_ruta cr
+        JOIN clientes c ON c.id=cr.cliente_id
+        JOIN rutas r ON r.id=cr.ruta_id
+        ORDER BY c.nombre, r.nombre
+        """
+    )
+
+def set_cliente_ruta(cliente_id: int, ruta_id: int, activo: int, actor_id: int | None):
+    ts = now_iso()
+    execute(
+        "INSERT INTO cliente_ruta(cliente_id,ruta_id,activo,created_at,created_by) VALUES (?,?,?,?,?) "
+        "ON CONFLICT(cliente_id,ruta_id) DO UPDATE SET activo=excluded.activo",
+        (int(cliente_id), int(ruta_id), int(activo), ts, actor_id),
+    )
+
+def get_cliente_ruta(cliente_id: int) -> dict | None:
+    """Obtiene la ruta asignada a un cliente."""
+    return fetchone(
+        "SELECT ruta_id FROM cliente_ruta WHERE cliente_id=? AND activo=1",
+        (int(cliente_id),)
+    )
+
+def list_maquinas_sin_asignar():
+    """Lista máquinas que no están asignadas (pool de máquinas disponibles)."""
+    return fetchall(
+        """
+        SELECT m.*, c.nombre AS cliente_nombre
+        FROM maquinas m
+        JOIN clientes c ON c.id=m.cliente_id
+        WHERE m.asignada=0 AND m.activo=1
+        ORDER BY c.nombre, m.codigo
+        """
     )
 
 def list_cats(table: str):

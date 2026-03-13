@@ -25,6 +25,10 @@ CREATE TABLE IF NOT EXISTS clientes(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre TEXT NOT NULL,
   comision_pct REAL NOT NULL DEFAULT 0.40,
+  domicilio TEXT,
+  colonia TEXT,
+  telefono TEXT,
+  poblacion TEXT,
   activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0,1)),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
@@ -47,6 +51,9 @@ CREATE TABLE IF NOT EXISTS maquinas(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   codigo TEXT NOT NULL UNIQUE,
   cliente_id INTEGER NOT NULL,
+  numero_permiso TEXT,
+  fecha_permiso TEXT,
+  asignada INTEGER NOT NULL DEFAULT 1 CHECK (asignada IN (0,1)),
   activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0,1)),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
@@ -61,6 +68,17 @@ CREATE TABLE IF NOT EXISTS usuario_ruta(
   activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0,1)),
   PRIMARY KEY (usuario_id, ruta_id),
   FOREIGN KEY(usuario_id) REFERENCES usuarios(id),
+  FOREIGN KEY(ruta_id) REFERENCES rutas(id)
+);
+
+CREATE TABLE IF NOT EXISTS cliente_ruta(
+  cliente_id INTEGER NOT NULL,
+  ruta_id INTEGER NOT NULL,
+  activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0,1)),
+  created_at TEXT NOT NULL,
+  created_by INTEGER,
+  PRIMARY KEY (cliente_id, ruta_id),
+  FOREIGN KEY(cliente_id) REFERENCES clientes(id),
   FOREIGN KEY(ruta_id) REFERENCES rutas(id)
 );
 
@@ -158,6 +176,8 @@ CREATE TABLE IF NOT EXISTS corte_detalle(
 );
 
 CREATE INDEX IF NOT EXISTS idx_maquinas_cliente ON maquinas(cliente_id);
+CREATE INDEX IF NOT EXISTS idx_maquinas_asignada ON maquinas(asignada);
+CREATE INDEX IF NOT EXISTS idx_cliente_ruta ON cliente_ruta(cliente_id, ruta_id);
 CREATE INDEX IF NOT EXISTS idx_cortes_cliente_week ON cortes(cliente_id, week_start);
 CREATE INDEX IF NOT EXISTS idx_detalle_corte ON corte_detalle(corte_id);
 
@@ -288,7 +308,14 @@ def init_db(seed: bool = True):
             ruta_id = con.execute("SELECT id FROM rutas WHERE nombre='Ruta Demo'").fetchone()["id"]
             op_id = con.execute("SELECT id FROM usuarios WHERE username='operador'").fetchone()["id"]
 
+            # Asignar operador a ruta
             con.execute("INSERT INTO usuario_ruta(usuario_id,ruta_id,activo) VALUES (?,?,1)", (op_id, ruta_id))
+            
+            # Asignar cliente a ruta (nuevo sistema)
+            con.execute("INSERT INTO cliente_ruta(cliente_id,ruta_id,activo,created_at,created_by) VALUES (?,?,1,?,?)",
+                       (cliente_id, ruta_id, now_iso(), admin_id))
+            
+            # Mantener maquina_ruta para compatibilidad (opcional)
             for row in con.execute("SELECT id FROM maquinas").fetchall():
                 con.execute("INSERT INTO maquina_ruta(maquina_id,ruta_id,activo) VALUES (?,?,1)", (row["id"], ruta_id))
             con.commit()

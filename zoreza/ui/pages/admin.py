@@ -53,12 +53,24 @@ def page_admin(user: dict):
 
         with st.expander("Crear cliente"):
             with st.form("create_cliente"):
-                nombre = st.text_input("Nombre cliente")
-                com = st.number_input("Comisión % (0-100)", min_value=0.0, max_value=100.0, value=40.0, step=1.0)
+                nombre = st.text_input("Nombre cliente*")
+                com = st.number_input("Comisión % (0-100)*", min_value=0.0, max_value=100.0, value=40.0, step=1.0)
+                st.caption("Campos opcionales:")
+                col1, col2 = st.columns(2)
+                with col1:
+                    domicilio = st.text_input("Domicilio")
+                    telefono = st.text_input("Teléfono")
+                with col2:
+                    colonia = st.text_input("Colonia")
+                    poblacion = st.text_input("Población")
                 activo = st.checkbox("activo", value=True, key="c_act")
                 ok = st.form_submit_button("Crear")
             if ok:
-                repo.create_cliente(nombre.strip(), com/100.0, 1 if activo else 0, user["id"])
+                repo.create_cliente(
+                    nombre.strip(), com/100.0, 1 if activo else 0, user["id"],
+                    domicilio.strip() or None, colonia.strip() or None,
+                    telefono.strip() or None, poblacion.strip() or None
+                )
                 st.success("Creado.")
                 st.rerun()
 
@@ -66,12 +78,24 @@ def page_admin(user: dict):
             if clientes:
                 pick = st.selectbox("Cliente", clientes, format_func=lambda r: r["nombre"], key="pick_cliente")
                 with st.form("edit_cliente"):
-                    nombre2 = st.text_input("Nombre", value=pick["nombre"])
-                    com2 = st.number_input("Comisión %", min_value=0.0, max_value=100.0, value=float(pick["comision_pct"])*100.0, step=1.0)
+                    nombre2 = st.text_input("Nombre*", value=pick["nombre"])
+                    com2 = st.number_input("Comisión %*", min_value=0.0, max_value=100.0, value=float(pick["comision_pct"])*100.0, step=1.0)
+                    st.caption("Campos opcionales:")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        domicilio2 = st.text_input("Domicilio", value=pick.get("domicilio") or "")
+                        telefono2 = st.text_input("Teléfono", value=pick.get("telefono") or "")
+                    with col2:
+                        colonia2 = st.text_input("Colonia", value=pick.get("colonia") or "")
+                        poblacion2 = st.text_input("Población", value=pick.get("poblacion") or "")
                     activo2 = st.checkbox("activo", value=bool(pick["activo"]), key="c_act2")
                     ok2 = st.form_submit_button("Guardar")
                 if ok2:
-                    repo.update_cliente(pick["id"], nombre2.strip(), com2/100.0, 1 if activo2 else 0, user["id"])
+                    repo.update_cliente(
+                        pick["id"], nombre2.strip(), com2/100.0, 1 if activo2 else 0, user["id"],
+                        domicilio2.strip() or None, colonia2.strip() or None,
+                        telefono2.strip() or None, poblacion2.strip() or None
+                    )
                     st.success("Actualizado.")
                     st.rerun()
 
@@ -85,12 +109,23 @@ def page_admin(user: dict):
 
         with st.expander("Crear máquina"):
             with st.form("create_maquina"):
-                codigo = st.text_input("Código (único)")
-                cliente_name = st.selectbox("Cliente", list(cliente_map.keys()))
+                codigo = st.text_input("Código (único)*")
+                cliente_name = st.selectbox("Cliente*", list(cliente_map.keys()))
+                st.caption("Campos opcionales:")
+                col1, col2 = st.columns(2)
+                with col1:
+                    numero_permiso = st.text_input("Número de Permiso")
+                with col2:
+                    fecha_permiso = st.date_input("Fecha de Permiso", value=None)
+                asignada = st.checkbox("Asignada (en uso)", value=True, help="Desmarcar para dejar en pool de máquinas disponibles")
                 activo = st.checkbox("activo", value=True, key="m_act")
                 ok = st.form_submit_button("Crear")
             if ok:
-                repo.create_maquina(codigo.strip(), cliente_map[cliente_name], 1 if activo else 0, user["id"])
+                fecha_str = fecha_permiso.isoformat() if fecha_permiso else None
+                repo.create_maquina(
+                    codigo.strip(), cliente_map[cliente_name], 1 if activo else 0, user["id"],
+                    numero_permiso.strip() or None, fecha_str, 1 if asignada else 0
+                )
                 st.success("Creada.")
                 st.rerun()
 
@@ -98,12 +133,30 @@ def page_admin(user: dict):
             if maquinas:
                 pick = st.selectbox("Máquina", maquinas, format_func=lambda r: f"{r['codigo']} · {r['cliente_nombre']}", key="pick_maquina")
                 with st.form("edit_maquina"):
-                    codigo2 = st.text_input("Código", value=pick["codigo"])
-                    cliente_name2 = st.selectbox("Cliente", list(cliente_map.keys()), index=list(cliente_map.keys()).index(pick["cliente_nombre"]))
+                    codigo2 = st.text_input("Código*", value=pick["codigo"])
+                    cliente_name2 = st.selectbox("Cliente*", list(cliente_map.keys()), index=list(cliente_map.keys()).index(pick["cliente_nombre"]))
+                    st.caption("Campos opcionales:")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        numero_permiso2 = st.text_input("Número de Permiso", value=pick.get("numero_permiso") or "")
+                    with col2:
+                        from datetime import date
+                        fecha_val = None
+                        if pick.get("fecha_permiso"):
+                            try:
+                                fecha_val = date.fromisoformat(pick["fecha_permiso"])
+                            except:
+                                pass
+                        fecha_permiso2 = st.date_input("Fecha de Permiso", value=fecha_val)
+                    asignada2 = st.checkbox("Asignada (en uso)", value=bool(pick.get("asignada", 1)), help="Desmarcar para dejar en pool de máquinas disponibles")
                     activo2 = st.checkbox("activo", value=bool(pick["activo"]), key="m_act2")
                     ok2 = st.form_submit_button("Guardar")
                 if ok2:
-                    repo.update_maquina(pick["id"], codigo2.strip(), cliente_map[cliente_name2], 1 if activo2 else 0, user["id"])
+                    fecha_str2 = fecha_permiso2.isoformat() if fecha_permiso2 else None
+                    repo.update_maquina(
+                        pick["id"], codigo2.strip(), cliente_map[cliente_name2], 1 if activo2 else 0, user["id"],
+                        numero_permiso2.strip() or None, fecha_str2, 1 if asignada2 else 0
+                    )
                     st.success("Actualizada.")
                     st.rerun()
 
@@ -138,11 +191,11 @@ def page_admin(user: dict):
 
     with tab[4]:
         st.subheader("Asignaciones")
-        st.caption("Usuario ↔ Ruta y Máquina ↔ Ruta")
+        st.info("ℹ️ **Nuevo sistema:** Ahora las asignaciones son Cliente→Ruta. Todas las máquinas del cliente heredan automáticamente la ruta asignada.")
 
         rutas = repo.list_rutas()
         usuarios = repo.list_usuarios()
-        maquinas = repo.list_maquinas()
+        clientes = repo.list_clientes()
 
         col1, col2 = st.columns(2)
         with col1:
@@ -160,18 +213,27 @@ def page_admin(user: dict):
                 st.rerun()
 
         with col2:
-            st.markdown("#### Máquina ↔ Ruta")
-            mr = repo.list_maquina_ruta()
-            st.dataframe(mr, use_container_width=True, hide_index=True)
-            with st.form("set_mr"):
-                m = st.selectbox("Máquina", maquinas, format_func=lambda r: r["codigo"], key="mr_m")
-                r2 = st.selectbox("Ruta", rutas, format_func=lambda rr: rr["nombre"], key="mr_r")
-                activo2 = st.checkbox("activo", value=True, key="mr_act")
+            st.markdown("#### Cliente ↔ Ruta")
+            cr = repo.list_cliente_ruta()
+            st.dataframe(cr, use_container_width=True, hide_index=True)
+            with st.form("set_cr"):
+                c = st.selectbox("Cliente", clientes, format_func=lambda r: r["nombre"], key="cr_c")
+                r2 = st.selectbox("Ruta", rutas, format_func=lambda rr: rr["nombre"], key="cr_r")
+                activo2 = st.checkbox("activo", value=True, key="cr_act")
                 ok2 = st.form_submit_button("Guardar")
             if ok2:
-                repo.set_maquina_ruta(m["id"], r2["id"], 1 if activo2 else 0)
-                st.success("Asignación guardada.")
+                repo.set_cliente_ruta(c["id"], r2["id"], 1 if activo2 else 0, user["id"])
+                st.success("Asignación guardada. Todas las máquinas del cliente heredan esta ruta.")
                 st.rerun()
+        
+        st.divider()
+        st.markdown("#### 📦 Pool de Máquinas Sin Asignar")
+        st.caption("Máquinas marcadas como 'no asignadas' que están disponibles para uso futuro")
+        sin_asignar = repo.list_maquinas_sin_asignar()
+        if sin_asignar:
+            st.dataframe(sin_asignar, use_container_width=True, hide_index=True)
+        else:
+            st.info("No hay máquinas sin asignar. Todas las máquinas están en uso.")
 
     with tab[5]:
         st.subheader("Config global")

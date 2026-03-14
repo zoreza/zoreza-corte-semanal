@@ -34,13 +34,11 @@ def force_local_db():
     _FORCE_LOCAL = True
 
 
-def is_turso_configured() -> bool:
-    """Verifica si Turso está configurado."""
-    # Si se forzó local, retornar False
-    if _FORCE_LOCAL:
-        return False
-    
-    # Intentar leer desde Streamlit Secrets primero
+def has_turso_credentials() -> bool:
+    """
+    Verifica si existen credenciales de Turso (sin importar el estado del fallback).
+    Útil para la UI para saber si mostrar opciones de migración.
+    """
     url = None
     token = None
     
@@ -58,6 +56,19 @@ def is_turso_configured() -> bool:
         token = os.getenv("TURSO_AUTH_TOKEN")
     
     return bool(url and token and REQUESTS_AVAILABLE)
+
+
+def is_turso_configured() -> bool:
+    """
+    Verifica si Turso está configurado Y activo (no en fallback).
+    Esta función se usa para decidir qué BD usar en connect().
+    """
+    # Si se forzó local, retornar False
+    if _FORCE_LOCAL:
+        return False
+    
+    # Verificar si existen credenciales
+    return has_turso_credentials()
 
 
 def get_turso_config() -> dict[str, str]:

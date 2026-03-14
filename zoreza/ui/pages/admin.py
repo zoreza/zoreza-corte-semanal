@@ -394,7 +394,9 @@ def page_admin(user: dict):
                 st.markdown("### 📤 Migrar Datos a Turso")
                 st.caption("Si ya tienes datos en SQLite local, puedes migrarlos a Turso.")
                 
-                if turso_service.is_turso_configured():
+                # Usar has_turso_credentials() en lugar de is_turso_configured()
+                # para permitir migración incluso cuando el fallback está activo
+                if turso_service.has_turso_credentials():
                     local_path = db_path()
                     config = turso_service.get_turso_config()
                     

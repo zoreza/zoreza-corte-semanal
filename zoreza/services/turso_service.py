@@ -164,6 +164,40 @@ def create_turso_client(url: str, auth_token: str) -> Any:
             rows = self.fetchall(sql, params)
             return rows[0] if rows else None
         
+        def executescript(self, script: str) -> None:
+            """
+            Ejecuta un script SQL con múltiples statements.
+            Compatible con sqlite3.executescript().
+            """
+            # Dividir el script en statements individuales
+            # Remover comentarios y líneas vacías
+            statements = []
+            current_statement = []
+            
+            for line in script.split('\n'):
+                line = line.strip()
+                # Ignorar comentarios y líneas vacías
+                if not line or line.startswith('--'):
+                    continue
+                
+                current_statement.append(line)
+                
+                # Si la línea termina con ;, es el fin de un statement
+                if line.endswith(';'):
+                    stmt = ' '.join(current_statement)
+                    if stmt.strip():
+                        statements.append(stmt)
+                    current_statement = []
+            
+            # Ejecutar cada statement
+            for stmt in statements:
+                try:
+                    self.execute(stmt)
+                except Exception as e:
+                    # Ignorar errores de "table already exists"
+                    if "already exists" not in str(e).lower():
+                        raise
+        
         def commit(self):
             """No-op para compatibilidad con sqlite3."""
             pass

@@ -5,6 +5,14 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from zoreza.services.passwords import hash_password
 
+# Intentar importar soporte para Turso
+try:
+    from zoreza.services import turso_service
+    TURSO_SUPPORT = True
+except ImportError:
+    TURSO_SUPPORT = False
+    turso_service = None
+
 SCHEMA_SQL = """
 PRAGMA foreign_keys = ON;
 
@@ -233,12 +241,28 @@ def db_path() -> str:
     return os.getenv("ZOREZA_DB_PATH", "./data/zoreza.db")
 
 def connect():
-    path = db_path()
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(path, check_same_thread=False)
-    con.row_factory = sqlite3.Row
-    con.execute("PRAGMA foreign_keys = ON;")
-    return con
+    """
+    Crea una conexión a la base de datos.
+    Usa Turso si está configurado, sino usa SQLite local.
+    """
+    # Verificar si Turso está configurado
+    if TURSO_SUPPORT and turso_service.is_turso_configured():
+        # Usar Turso (retorna un cliente compatible)
+        return turso_service.create_turso_client()
+    else:
+        # Usar SQLite local (comportamiento original)
+        path = db_path()
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        con = sqlite3.connect(path, check_same_thread=False)
+        con.row_factory = sqlite3.Row
+        con.execute("PRAGMA foreign_keys = ON;")
+        return con
+
+def get_db_type() -> str:
+    """Retorna el tipo de BD en uso: 'turso' o 'local'"""
+    if TURSO_SUPPORT and turso_service.is_turso_configured():
+        return "turso"
+    return "local"
 
 def now_iso() -> str:
     """Retorna timestamp actual en zona horaria configurada."""

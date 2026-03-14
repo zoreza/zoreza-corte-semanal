@@ -11,7 +11,7 @@ def page_admin(user: dict):
 
     st.header("Admin")
 
-    tab = st.tabs(["Usuarios","Clientes","Máquinas","Rutas","Asignaciones","Config & Catálogos"])
+    tab = st.tabs(["Usuarios","Clientes","Máquinas","Rutas","Asignaciones","Config & Catálogos","Base de Datos"])
 
     with tab[0]:
         st.subheader("Usuarios")
@@ -236,7 +236,7 @@ def page_admin(user: dict):
             st.info("No hay máquinas sin asignar. Todas las máquinas están en uso.")
 
     with tab[5]:
-        st.subheader("Config global")
+        st.subheader("Configuración Global")
         cfg = get_config()
         keys = ["tolerancia_pesos","fondo_sugerido","semana_inicia","ticket_negocio_nombre","ticket_footer"]
         for k in keys:
@@ -269,3 +269,161 @@ def page_admin(user: dict):
                     repo.upsert_cat(table, cat_id, nombre.strip(), 1 if req else 0, 1 if act else 0)
                     st.success("Guardado.")
                     st.rerun()
+
+    
+    with tab[6]:
+        st.subheader("Base de Datos")
+        
+        # Importar servicios necesarios
+        try:
+            from zoreza.services import turso_service
+            from zoreza.db.core import get_db_type, db_path
+            
+            # Mostrar estado actual
+            status = turso_service.get_db_status()
+            
+            if status["type"] == "turso":
+                st.success(status["message"])
+            else:
+                st.info(status["message"])
+            
+            st.divider()
+            
+            # Sección de configuración de Turso
+            st.markdown("### 🌐 Configurar Turso (Base de Datos en la Nube)")
+            st.caption("Turso es SQLite en la nube, 100% gratis. Perfecto para Streamlit Cloud.")
+            
+            with st.expander("ℹ️ ¿Cómo obtener las credenciales de Turso?", expanded=False):
+                st.markdown("""
+                **Paso 1:** Crea una cuenta gratis en [turso.tech](https://turso.tech)
+                
+                **Paso 2:** Instala Turso CLI:
+                ```bash
+                curl -sSfL https://get.tur.so/install.sh | bash
+                ```
+                
+                **Paso 3:** Inicia sesión:
+                ```bash
+                turso auth login
+                ```
+                
+                **Paso 4:** Crea una base de datos:
+                ```bash
+                turso db create zoreza-corte
+                ```
+                
+                **Paso 5:** Obtén la URL:
+                ```bash
+                turso db show zoreza-corte --url
+                ```
+                
+                **Paso 6:** Crea un token:
+                ```bash
+                turso db tokens create zoreza-corte
+                ```
+                
+                **Paso 7:** Copia la URL y el Token aquí abajo 👇
+                """)
+            
+            # Formulario de configuración
+            current_config = turso_service.get_turso_config()
+            
+            with st.form("turso_config"):
+                turso_url = st.text_input(
+                    "Turso Database URL",
+                    value=current_config["url"],
+                    placeholder="libsql://your-database.turso.io",
+                    help="URL de tu base de datos en Turso"
+                )
+                
+                turso_token = st.text_input(
+                    "Turso Auth Token",
+                    value=current_config["auth_token"],
+                    type="password",
+                    placeholder="eyJhbGciOiJFZERTQS...",
+                    help="Token de autenticación de Turso"
+                )
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    test_btn = st.form_submit_button("🔍 Probar Conexión", use_container_width=True)
+                with col2:
+                    save_btn = st.form_submit_button("💾 Guardar Configuración", use_container_width=True, type="primary")
+            
+            # Probar conexión
+            if test_btn:
+                if not turso_url or not turso_token:
+                    st.error("❌ Por favor ingresa URL y Token")
+                else:
+                    with st.spinner("Probando conexión..."):
+                        success, message = turso_service.test_turso_connection(turso_url, turso_token)
+                        if success:
+                            st.success(message)
+                        else:
+                            st.error(message)
+            
+            # Guardar configuración
+            if save_btn:
+                if not turso_url or not turso_token:
+                    st.error("❌ Por favor ingresa URL y Token")
+                else:
+                    # Primero probar la conexión
+                    with st.spinner("Verificando conexión..."):
+                        success, message = turso_service.test_turso_connection(turso_url, turso_token)
+                    
+                    if success:
+                        turso_service.set_turso_config(turso_url, turso_token)
+                        st.success("✅ Configuración guardada. La app usará Turso al reiniciar.")
+                        st.info("⚠️ **Importante:** Necesitas reiniciar la aplicación para que los cambios surtan efecto.")
+                        
+                        # Botón para reiniciar (solo funciona en Streamlit Cloud)
+                        if st.button("🔄 Reiniciar Aplicación"):
+                            st.rerun()
+                    else:
+                        st.error(f"❌ No se pudo conectar: {message}")
+            
+            st.divider()
+            
+            # Sección de migración
+            if status["type"] == "local":
+                st.markdown("### 📤 Migrar Datos a Turso")
+                st.caption("Si ya tienes datos en SQLite local, puedes migrarlos a Turso.")
+                
+                if turso_service.is_turso_configured():
+                    local_path = db_path()
+                    
+                    if st.button("🚀 Migrar Datos Locales a Turso", type="primary"):
+                        with st.spinner("Migrando datos..."):
+                            success, message = turso_service.migrate_local_to_turso(local_path)
+                        
+                        if success:
+                            st.success(message)
+                            st.info("💡 Reinicia la aplicación para empezar a usar Turso")
+                        else:
+                            st.error(message)
+                else:
+                    st.warning("⚠️ Primero configura Turso arriba para poder migrar datos")
+            
+            st.divider()
+            
+            # Información adicional
+            st.markdown("### 📚 Información")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Tipo de BD", status["type"].upper())
+            with col2:
+                st.metric("Estado", "✅ Configurado" if status["configured"] else "⚠️ Local")
+            
+            with st.expander("🔧 Detalles Técnicos"):
+                st.json({
+                    "type": status["type"],
+                    "configured": status["configured"],
+                    "available": status["available"],
+                    "message": status["message"],
+                    "local_path": db_path() if status["type"] == "local" else "N/A"
+                })
+            
+        except ImportError as e:
+            st.error(f"❌ Error al cargar módulo de Turso: {e}")
+            st.info("Asegúrate de que `libsql-client` esté instalado: `pip install libsql-client`")

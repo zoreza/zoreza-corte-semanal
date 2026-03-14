@@ -189,25 +189,26 @@ def create_turso_client(url: str, auth_token: str) -> Any:
         def execute(self, sql: str, params: tuple = ()) -> Any:
             """Ejecuta una query SQL."""
             # Convertir parámetros a formato compatible con Turso
+            # Formato: internally tagged enum donde la clave es el tipo
             args = []
             if params:
                 for param in params:
                     if param is None:
-                        args.append({"type": "null"})
+                        args.append("null")
                     elif isinstance(param, bool):
                         # Bool debe ir antes de int porque bool es subclase de int
-                        args.append({"type": "integer", "value": str(int(param))})
+                        args.append({"integer": str(int(param))})
                     elif isinstance(param, int):
-                        args.append({"type": "integer", "value": str(param)})
+                        args.append({"integer": str(param)})
                     elif isinstance(param, float):
-                        args.append({"type": "float", "value": param})
+                        args.append({"float": param})
                     elif isinstance(param, str):
-                        args.append({"type": "text", "value": param})
+                        args.append({"text": param})
                     elif isinstance(param, bytes):
-                        args.append({"type": "blob", "base64": param.decode('utf-8')})
+                        args.append({"blob": {"base64": param.decode('utf-8')}})
                     else:
                         # Fallback: convertir a string
-                        args.append({"type": "text", "value": str(param)})
+                        args.append({"text": str(param)})
             
             response = requests.post(
                 f"{self.base_url}/v2/pipeline",

@@ -9,11 +9,11 @@ from pathlib import Path
 
 # Intentar importar libsql, pero no fallar si no está disponible
 try:
-    from libsql_client import create_client
+    from libsql_client import create_client_sync
     TURSO_AVAILABLE = True
 except ImportError:
     TURSO_AVAILABLE = False
-    create_client = None
+    create_client_sync = None
 
 
 def is_turso_configured() -> bool:
@@ -51,7 +51,8 @@ def test_turso_connection(url: str, auth_token: str) -> tuple[bool, str]:
         return False, "URL y Auth Token son requeridos"
     
     try:
-        client = create_client(
+        # Usar cliente síncrono para evitar problemas con event loop
+        client = create_client_sync(
             url=url,
             auth_token=auth_token
         )
@@ -77,7 +78,8 @@ def create_turso_client():
     if not config["url"] or not config["auth_token"]:
         raise ValueError("Turso no está configurado")
     
-    return create_client(
+    # Usar cliente síncrono para compatibilidad con Streamlit
+    return create_client_sync(
         url=config["url"],
         auth_token=config["auth_token"]
     )

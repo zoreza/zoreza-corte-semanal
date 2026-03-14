@@ -9,11 +9,11 @@ from pathlib import Path
 
 # Intentar importar libsql, pero no fallar si no está disponible
 try:
-    from libsql_client import create_client_sync
+    import libsql_experimental as libsql
     TURSO_AVAILABLE = True
 except ImportError:
     TURSO_AVAILABLE = False
-    create_client_sync = None
+    libsql = None
 
 
 def is_turso_configured() -> bool:
@@ -45,22 +45,25 @@ def test_turso_connection(url: str, auth_token: str) -> tuple[bool, str]:
         tuple[bool, str]: (éxito, mensaje)
     """
     if not TURSO_AVAILABLE:
-        return False, "La librería libsql-client no está instalada. Ejecuta: pip install libsql-client"
+        return False, "La librería libsql-experimental-python no está instalada. Ejecuta: pip install libsql-experimental-python"
     
     if not url or not auth_token:
         return False, "URL y Auth Token son requeridos"
     
     try:
-        # Usar cliente síncrono para evitar problemas con event loop
-        client = create_client_sync(
-            url=url,
+        # Conectar usando libsql-experimental (más estable para Streamlit)
+        conn = libsql.connect(
+            database=url,
             auth_token=auth_token
         )
         
         # Intentar una consulta simple
-        result = client.execute("SELECT 1 as test")
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 as test")
+        result = cursor.fetchone()
+        conn.close()
         
-        if result and len(result.rows) > 0:
+        if result:
             return True, "✅ Conexión exitosa a Turso"
         else:
             return False, "❌ No se pudo ejecutar consulta de prueba"
@@ -70,17 +73,17 @@ def test_turso_connection(url: str, auth_token: str) -> tuple[bool, str]:
 
 
 def create_turso_client():
-    """Crea un cliente de Turso con la configuración actual."""
+    """Crea una conexión a Turso con la configuración actual."""
     if not TURSO_AVAILABLE:
-        raise ImportError("libsql-client no está instalado")
+        raise ImportError("libsql-experimental-python no está instalado")
     
     config = get_turso_config()
     if not config["url"] or not config["auth_token"]:
         raise ValueError("Turso no está configurado")
     
-    # Usar cliente síncrono para compatibilidad con Streamlit
-    return create_client_sync(
-        url=config["url"],
+    # Conectar usando libsql-experimental
+    return libsql.connect(
+        database=config["url"],
         auth_token=config["auth_token"]
     )
 
@@ -137,7 +140,8 @@ def migrate_local_to_turso(local_db_path: str) -> tuple[bool, str]:
         local_conn.row_factory = sqlite3.Row
         
         # Conectar a Turso
-        turso_client = create_turso_client()
+        turso_conn = create_turso_client()
+        turso_cursor = turso_conn.cursor()
         
         # Obtener todas las tablas
         tables = local_conn.execute(
@@ -157,7 +161,8 @@ def migrate_local_to_turso(local_db_path: str) -> tuple[bool, str]:
             
             # Crear tabla en Turso
             try:
-                turso_client.execute(create_stmt)
+                turso_cursor.execute(create_stmt)
+                turso_conn.commit()
             except:
                 pass  # La tabla puede ya existir
             
@@ -170,10 +175,13 @@ def migrate_local_to_turso(local_db_path: str) -> tuple[bool, str]:
                 placeholders = ",".join(["?" for _ in columns])
                 
                 insert_sql = f"INSERT OR REPLACE INTO {table_name} ({','.join(columns)}) VALUES ({placeholders})"
-                turso_client.execute(insert_sql, values)
+                turso_cursor.execute(insert_sql, values)
                 migrated_rows += 1
             
+            turso_conn.commit()
             migrated_tables += 1
+        
+        turso_conn.close()
         
         local_conn.close()
         

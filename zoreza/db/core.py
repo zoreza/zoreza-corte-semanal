@@ -294,8 +294,39 @@ def now_iso() -> str:
     return datetime.now(tz).isoformat(timespec="seconds")
 
 def init_db(seed: bool = True):
-    con = connect()
+    """
+    Inicializa la base de datos.
+    Si falla con Turso, automáticamente usa SQLite local.
+    """
     try:
+        con = connect()
+        con.executescript(SCHEMA_SQL)
+        con.commit()
+
+        if not seed:
+            return
+
+        # config
+        for k, v in DEFAULT_CONFIG.items():
+            con.execute(
+                "INSERT OR IGNORE INTO config(key,value,updated_at,updated_by) VALUES (?,?,?,NULL)",
+                (k, v, now_iso()),
+            )
+        con.commit()
+    except Exception as e:
+        # Si falla (probablemente Turso), limpiar config y reintentar con SQLite local
+        print(f"⚠️ Error inicializando BD: {e}")
+        print("🔄 Reintentando con SQLite local...")
+        
+        # Limpiar configuración de Turso
+        import os
+        if "TURSO_DATABASE_URL" in os.environ:
+            del os.environ["TURSO_DATABASE_URL"]
+        if "TURSO_AUTH_TOKEN" in os.environ:
+            del os.environ["TURSO_AUTH_TOKEN"]
+        
+        # Reintentar con SQLite local
+        con = connect()
         con.executescript(SCHEMA_SQL)
         con.commit()
 

@@ -17,19 +17,58 @@ except ImportError:
     REQUESTS_AVAILABLE = False
     requests = None
 
+try:
+    import streamlit as st
+    STREAMLIT_AVAILABLE = True
+except ImportError:
+    STREAMLIT_AVAILABLE = False
+    st = None
+
 
 def is_turso_configured() -> bool:
     """Verifica si Turso está configurado."""
-    url = os.getenv("TURSO_DATABASE_URL")
-    token = os.getenv("TURSO_AUTH_TOKEN")
+    # Intentar leer desde Streamlit Secrets primero
+    url = None
+    token = None
+    
+    if STREAMLIT_AVAILABLE:
+        try:
+            url = st.secrets.get("TURSO_DATABASE_URL")
+            token = st.secrets.get("TURSO_AUTH_TOKEN")
+        except:
+            pass
+    
+    # Si no está en secrets, intentar variables de entorno
+    if not url:
+        url = os.getenv("TURSO_DATABASE_URL")
+    if not token:
+        token = os.getenv("TURSO_AUTH_TOKEN")
+    
     return bool(url and token and REQUESTS_AVAILABLE)
 
 
 def get_turso_config() -> dict[str, str]:
-    """Obtiene la configuración de Turso desde variables de entorno."""
+    """Obtiene la configuración de Turso desde Streamlit Secrets o variables de entorno."""
+    url = ""
+    token = ""
+    
+    # Intentar leer desde Streamlit Secrets primero
+    if STREAMLIT_AVAILABLE:
+        try:
+            url = st.secrets.get("TURSO_DATABASE_URL", "")
+            token = st.secrets.get("TURSO_AUTH_TOKEN", "")
+        except:
+            pass
+    
+    # Si no está en secrets, intentar variables de entorno
+    if not url:
+        url = os.getenv("TURSO_DATABASE_URL", "")
+    if not token:
+        token = os.getenv("TURSO_AUTH_TOKEN", "")
+    
     return {
-        "url": os.getenv("TURSO_DATABASE_URL", ""),
-        "auth_token": os.getenv("TURSO_AUTH_TOKEN", "")
+        "url": url,
+        "auth_token": token
     }
 
 

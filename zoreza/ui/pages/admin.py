@@ -283,9 +283,14 @@ def page_admin(user: dict):
             status = turso_service.get_db_status()
             
             if status["type"] == "turso":
-                st.success(status["message"])
+                st.success(f"✅ Usando **{status['details']['provider']}**")
+                st.caption(f"📍 URL: `{status['url']}`")
+                st.caption(f"🔌 Conexión: {status['details']['connection']}")
             else:
-                st.info(status["message"])
+                st.info(f"📁 Usando **{status['details']['provider']}**")
+                st.caption(f"📍 Ruta: `{status['url']}`")
+                if "warning" in status["details"]:
+                    st.warning(f"⚠️ {status['details']['warning']}")
             
             st.divider()
             

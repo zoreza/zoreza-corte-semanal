@@ -248,7 +248,8 @@ def connect():
     # Verificar si Turso está configurado
     if TURSO_SUPPORT and turso_service.is_turso_configured():
         # Usar Turso (retorna un cliente compatible)
-        return turso_service.create_turso_client()
+        config = turso_service.get_turso_config()
+        return turso_service.create_turso_client(config["url"], config["auth_token"])
     else:
         # Usar SQLite local (comportamiento original)
         path = db_path()

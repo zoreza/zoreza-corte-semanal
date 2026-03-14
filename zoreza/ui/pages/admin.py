@@ -391,14 +391,23 @@ def page_admin(user: dict):
                 
                 if turso_service.is_turso_configured():
                     local_path = db_path()
+                    config = turso_service.get_turso_config()
                     
                     if st.button("🚀 Migrar Datos Locales a Turso", type="primary"):
                         with st.spinner("Migrando datos..."):
-                            success, message = turso_service.migrate_local_to_turso(local_path)
+                            success, message, stats = turso_service.migrate_local_to_turso(
+                                local_path,
+                                config["url"],
+                                config["auth_token"]
+                            )
                         
                         if success:
                             st.success(message)
                             st.info("💡 Reinicia la aplicación para empezar a usar Turso")
+                            if stats.get("errors"):
+                                with st.expander("⚠️ Ver errores"):
+                                    for error in stats["errors"]:
+                                        st.warning(error)
                         else:
                             st.error(message)
                 else:

@@ -244,20 +244,43 @@ def connect():
     """
     Crea una conexión a la base de datos.
     Usa Turso si está configurado, sino usa SQLite local.
+    Si Turso falla, automáticamente usa SQLite local como fallback.
     """
     # Verificar si Turso está configurado
     if TURSO_SUPPORT and turso_service.is_turso_configured():
-        # Usar Turso (retorna un cliente compatible)
-        config = turso_service.get_turso_config()
-        return turso_service.create_turso_client(config["url"], config["auth_token"])
-    else:
-        # Usar SQLite local (comportamiento original)
-        path = db_path()
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-        con = sqlite3.connect(path, check_same_thread=False)
-        con.row_factory = sqlite3.Row
-        con.execute("PRAGMA foreign_keys = ON;")
-        return con
+        try:
+            # Intentar usar Turso
+            config = turso_service.get_turso_config()
+            
+            # Validar que las credenciales no estén vacías
+            if not config["url"] or not config["auth_token"]:
+                raise ValueError("Credenciales de Turso vacías")
+            
+            # Probar la conexión antes de retornarla
+            success, message = turso_service.test_turso_connection(config["url"], config["auth_token"])
+            if not success:
+                raise Exception(f"Conexión a Turso falló: {message}")
+            
+            # Retornar cliente de Turso
+            return turso_service.create_turso_client(config["url"], config["auth_token"])
+            
+        except Exception as e:
+            # Si Turso falla, limpiar configuración y usar SQLite local
+            import os
+            if "TURSO_DATABASE_URL" in os.environ:
+                del os.environ["TURSO_DATABASE_URL"]
+            if "TURSO_AUTH_TOKEN" in os.environ:
+                del os.environ["TURSO_AUTH_TOKEN"]
+            
+            print(f"⚠️ Turso falló, usando SQLite local: {e}")
+    
+    # Usar SQLite local (comportamiento original o fallback)
+    path = db_path()
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(path, check_same_thread=False)
+    con.row_factory = sqlite3.Row
+    con.execute("PRAGMA foreign_keys = ON;")
+    return con
 
 def get_db_type() -> str:
     """Retorna el tipo de BD en uso: 'turso' o 'local'"""

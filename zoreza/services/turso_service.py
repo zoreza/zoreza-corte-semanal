@@ -189,26 +189,27 @@ def create_turso_client(url: str, auth_token: str) -> Any:
         def execute(self, sql: str, params: tuple = ()) -> Any:
             """Ejecuta una query SQL."""
             # Convertir parámetros a formato compatible con Turso
-            # Formato: internally tagged enum donde la clave es el tipo
+            # Formato correcto según API de Turso: cada valor necesita "type" + valor específico
             args = []
             if params:
                 for param in params:
                     if param is None:
-                        args.append("null")
+                        args.append({"type": "null"})
                     elif isinstance(param, bool):
                         # Bool debe ir antes de int porque bool es subclase de int
-                        args.append({"integer": str(int(param))})
+                        args.append({"type": "integer", "value": str(int(param))})
                     elif isinstance(param, int):
-                        args.append({"integer": str(param)})
+                        args.append({"type": "integer", "value": str(param)})
                     elif isinstance(param, float):
-                        args.append({"float": param})
+                        args.append({"type": "float", "value": param})
                     elif isinstance(param, str):
-                        args.append({"text": param})
+                        args.append({"type": "text", "value": param})
                     elif isinstance(param, bytes):
-                        args.append({"blob": {"base64": param.decode('utf-8')}})
+                        import base64
+                        args.append({"type": "blob", "value": base64.b64encode(param).decode('utf-8')})
                     else:
                         # Fallback: convertir a string
-                        args.append({"text": str(param)})
+                        args.append({"type": "text", "value": str(param)})
             
             response = requests.post(
                 f"{self.base_url}/v2/pipeline",

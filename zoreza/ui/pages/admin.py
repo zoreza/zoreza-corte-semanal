@@ -433,8 +433,8 @@ def page_admin(user: dict):
                 st.json({
                     "type": status["type"],
                     "configured": status["configured"],
-                    "available": status["available"],
-                    "message": status["message"],
+                    "url": status["url"],
+                    "details": status["details"],
                     "local_path": db_path() if status["type"] == "local" else "N/A"
                 })
             

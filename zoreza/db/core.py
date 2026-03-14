@@ -244,37 +244,21 @@ def connect():
     """
     Crea una conexión a la base de datos.
     Usa Turso si está configurado, sino usa SQLite local.
-    Si Turso falla, automáticamente usa SQLite local como fallback.
     """
     # Verificar si Turso está configurado
     if TURSO_SUPPORT and turso_service.is_turso_configured():
-        try:
-            # Intentar usar Turso
-            config = turso_service.get_turso_config()
-            
-            # Validar que las credenciales no estén vacías
-            if not config["url"] or not config["auth_token"]:
-                raise ValueError("Credenciales de Turso vacías")
-            
-            # Probar la conexión antes de retornarla
-            success, message = turso_service.test_turso_connection(config["url"], config["auth_token"])
-            if not success:
-                raise Exception(f"Conexión a Turso falló: {message}")
-            
-            # Retornar cliente de Turso
+        # Usar Turso (retorna un cliente compatible)
+        config = turso_service.get_turso_config()
+        
+        # Validar que las credenciales no estén vacías
+        if config["url"] and config["auth_token"]:
+            print(f"🌐 Usando Turso: {config['url']}")
             return turso_service.create_turso_client(config["url"], config["auth_token"])
-            
-        except Exception as e:
-            # Si Turso falla, limpiar configuración y usar SQLite local
-            import os
-            if "TURSO_DATABASE_URL" in os.environ:
-                del os.environ["TURSO_DATABASE_URL"]
-            if "TURSO_AUTH_TOKEN" in os.environ:
-                del os.environ["TURSO_AUTH_TOKEN"]
-            
-            print(f"⚠️ Turso falló, usando SQLite local: {e}")
+        else:
+            print("⚠️ Credenciales de Turso vacías, usando SQLite local")
     
-    # Usar SQLite local (comportamiento original o fallback)
+    # Usar SQLite local (comportamiento original)
+    print("📁 Usando SQLite local")
     path = db_path()
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(path, check_same_thread=False)

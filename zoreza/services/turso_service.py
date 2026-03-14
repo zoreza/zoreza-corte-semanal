@@ -24,9 +24,22 @@ except ImportError:
     STREAMLIT_AVAILABLE = False
     st = None
 
+# Variable global para forzar uso de SQLite local (fallback)
+_FORCE_LOCAL = False
+
+
+def force_local_db():
+    """Fuerza el uso de SQLite local (desactiva Turso)."""
+    global _FORCE_LOCAL
+    _FORCE_LOCAL = True
+
 
 def is_turso_configured() -> bool:
     """Verifica si Turso está configurado."""
+    # Si se forzó local, retornar False
+    if _FORCE_LOCAL:
+        return False
+    
     # Intentar leer desde Streamlit Secrets primero
     url = None
     token = None

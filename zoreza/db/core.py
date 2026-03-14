@@ -298,16 +298,13 @@ def init_db(seed: bool = True):
             )
         con.commit()
     except Exception as e:
-        # Si falla (probablemente Turso), limpiar config y reintentar con SQLite local
-        print(f"⚠️ Error inicializando BD: {e}")
+        # Si falla (probablemente Turso), forzar SQLite local y reintentar
+        print(f"⚠️ Error inicializando BD con Turso: {e}")
         print("🔄 Reintentando con SQLite local...")
         
-        # Limpiar configuración de Turso
-        import os
-        if "TURSO_DATABASE_URL" in os.environ:
-            del os.environ["TURSO_DATABASE_URL"]
-        if "TURSO_AUTH_TOKEN" in os.environ:
-            del os.environ["TURSO_AUTH_TOKEN"]
+        # Forzar uso de SQLite local
+        if TURSO_SUPPORT:
+            turso_service.force_local_db()
         
         # Reintentar con SQLite local
         con = connect()

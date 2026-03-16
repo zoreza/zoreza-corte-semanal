@@ -177,6 +177,45 @@ def create_turso_client(url: str, auth_token: str) -> Any:
     
     http_url = _convert_turso_url_to_http(url)
     
+    class TursoCursor:
+        """Cursor compatible con sqlite3 para Turso."""
+        def __init__(self, client, sql: str, params: tuple):
+            self.client = client
+            self.sql = sql
+            self.params = params
+            self._result = None
+            self._executed = False
+        
+        def fetchone(self):
+            """Retorna una fila."""
+            if not self._executed:
+                self._result = self.client._execute_internal(self.sql, self.params)
+                self._executed = True
+            
+            rows = self._get_rows()
+            return rows[0] if rows else None
+        
+        def fetchall(self):
+            """Retorna todas las filas."""
+            if not self._executed:
+                self._result = self.client._execute_internal(self.sql, self.params)
+                self._executed = True
+            
+            return self._get_rows()
+        
+        def _get_rows(self):
+            """Extrae filas del resultado de Turso."""
+            if not self._result:
+                return []
+            
+            if "results" in self._result and len(self._result["results"]) > 0:
+                query_result = self._result["results"][0]["response"]["result"]
+                if "rows" in query_result:
+                    # Convertir a tuplas para compatibilidad con sqlite3
+                    return [tuple(row) for row in query_result["rows"]]
+            
+            return []
+    
     class TursoHTTPClient:
         def __init__(self, base_url: str, token: str):
             self.base_url = base_url
@@ -185,8 +224,13 @@ def create_turso_client(url: str, auth_token: str) -> Any:
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json"
             }
+            self.row_factory = None  # Compatible con sqlite3
         
-        def execute(self, sql: str, params: tuple = ()) -> Any:
+        def execute(self, sql: str, params: tuple = ()) -> TursoCursor:
+            """Ejecuta una query SQL y retorna un cursor."""
+            return TursoCursor(self, sql, params)
+        
+        def _execute_internal(self, sql: str, params: tuple = ()) -> Any:
             """Ejecuta una query SQL."""
             # Convertir parámetros a formato compatible con Turso
             # Formato correcto según API de Turso: cada valor necesita "type" + valor específico
@@ -234,21 +278,14 @@ def create_turso_client(url: str, auth_token: str) -> Any:
             return response.json()
         
         def fetchall(self, sql: str, params: tuple = ()) -> list:
-            """Ejecuta query y retorna todas las filas."""
-            result = self.execute(sql, params)
-            
-            # Extraer resultados del formato de respuesta de Turso
-            if "results" in result and len(result["results"]) > 0:
-                query_result = result["results"][0]["response"]["result"]
-                if "rows" in query_result:
-                    return query_result["rows"]
-            
-            return []
+            """Ejecuta query y retorna todas las filas (método de conveniencia)."""
+            cursor = self.execute(sql, params)
+            return cursor.fetchall()
         
         def fetchone(self, sql: str, params: tuple = ()) -> Optional[tuple]:
-            """Ejecuta query y retorna una fila."""
-            rows = self.fetchall(sql, params)
-            return rows[0] if rows else None
+            """Ejecuta query y retorna una fila (método de conveniencia)."""
+            cursor = self.execute(sql, params)
+            return cursor.fetchone()
         
         def executescript(self, script: str) -> None:
             """
@@ -278,7 +315,7 @@ def create_turso_client(url: str, auth_token: str) -> Any:
             # Ejecutar cada statement
             for stmt in statements:
                 try:
-                    self.execute(stmt)
+                    self._execute_internal(stmt)
                 except Exception as e:
                     # Ignorar errores de "table already exists"
                     if "already exists" not in str(e).lower():

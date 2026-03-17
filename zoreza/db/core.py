@@ -311,64 +311,68 @@ def init_db(seed: bool = True):
                 (k, v, now_iso()),
             )
         con.commit()
+    
+    # IMPORTANTE: Este código debe ejecutarse SIEMPRE, no solo en el except
+    if not seed:
+        return
+    
+    # cats
+    for table, rows in DEFAULT_CATS.items():
+        for nombre, req in rows:
+            con.execute(
+                f"INSERT OR IGNORE INTO {table}(nombre,requiere_nota,activo) VALUES (?,?,1)",
+                (nombre, req),
+            )
+    con.commit()
 
-        # cats
-        for table, rows in DEFAULT_CATS.items():
-            for nombre, req in rows:
-                con.execute(
-                    f"INSERT OR IGNORE INTO {table}(nombre,requiere_nota,activo) VALUES (?,?,1)",
-                    (nombre, req),
-                )
+    # users if empty
+    n_users = con.execute("SELECT COUNT(*) AS n FROM usuarios").fetchone()["n"]
+    if n_users == 0:
+        con.execute(
+            "INSERT INTO usuarios(username,password_hash,nombre,rol,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,1,?,?,NULL,NULL)",
+            ("admin", hash_password("admin123"), "Admin Zoreza", "ADMIN", now_iso(), now_iso()),
+        )
+        con.execute(
+            "INSERT INTO usuarios(username,password_hash,nombre,rol,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,1,?,?,NULL,NULL)",
+            ("operador", hash_password("operador123"), "Operador Zoreza", "OPERADOR", now_iso(), now_iso()),
+        )
         con.commit()
 
-        # users if empty
-        n_users = con.execute("SELECT COUNT(*) AS n FROM usuarios").fetchone()["n"]
-        if n_users == 0:
-            con.execute(
-                "INSERT INTO usuarios(username,password_hash,nombre,rol,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,1,?,?,NULL,NULL)",
-                ("admin", hash_password("admin123"), "Admin Zoreza", "ADMIN", now_iso(), now_iso()),
-            )
-            con.execute(
-                "INSERT INTO usuarios(username,password_hash,nombre,rol,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,1,?,?,NULL,NULL)",
-                ("operador", hash_password("operador123"), "Operador Zoreza", "OPERADOR", now_iso(), now_iso()),
-            )
-            con.commit()
+    # seed minimal entities if empty
+    n_clientes = con.execute("SELECT COUNT(*) AS n FROM clientes").fetchone()["n"]
+    if n_clientes == 0:
+        admin_id = con.execute("SELECT id FROM usuarios WHERE username='admin'").fetchone()["id"]
+        con.execute(
+            "INSERT INTO clientes(nombre,comision_pct,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
+            ("Cliente Demo", 0.40, now_iso(), now_iso(), admin_id, admin_id),
+        )
+        cliente_id = con.execute("SELECT id FROM clientes WHERE nombre='Cliente Demo'").fetchone()["id"]
+        con.execute(
+            "INSERT INTO maquinas(codigo,cliente_id,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
+            ("M-001", cliente_id, now_iso(), now_iso(), admin_id, admin_id),
+        )
+        con.execute(
+            "INSERT INTO maquinas(codigo,cliente_id,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
+            ("M-002", cliente_id, now_iso(), now_iso(), admin_id, admin_id),
+        )
+        con.execute(
+            "INSERT INTO rutas(nombre,descripcion,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
+            ("Ruta Demo", "Ruta inicial", now_iso(), now_iso(), admin_id, admin_id),
+        )
+        ruta_id = con.execute("SELECT id FROM rutas WHERE nombre='Ruta Demo'").fetchone()["id"]
+        op_id = con.execute("SELECT id FROM usuarios WHERE username='operador'").fetchone()["id"]
 
-        # seed minimal entities if empty
-        n_clientes = con.execute("SELECT COUNT(*) AS n FROM clientes").fetchone()["n"]
-        if n_clientes == 0:
-            admin_id = con.execute("SELECT id FROM usuarios WHERE username='admin'").fetchone()["id"]
-            con.execute(
-                "INSERT INTO clientes(nombre,comision_pct,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
-                ("Cliente Demo", 0.40, now_iso(), now_iso(), admin_id, admin_id),
-            )
-            cliente_id = con.execute("SELECT id FROM clientes WHERE nombre='Cliente Demo'").fetchone()["id"]
-            con.execute(
-                "INSERT INTO maquinas(codigo,cliente_id,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
-                ("M-001", cliente_id, now_iso(), now_iso(), admin_id, admin_id),
-            )
-            con.execute(
-                "INSERT INTO maquinas(codigo,cliente_id,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
-                ("M-002", cliente_id, now_iso(), now_iso(), admin_id, admin_id),
-            )
-            con.execute(
-                "INSERT INTO rutas(nombre,descripcion,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
-                ("Ruta Demo", "Ruta inicial", now_iso(), now_iso(), admin_id, admin_id),
-            )
-            ruta_id = con.execute("SELECT id FROM rutas WHERE nombre='Ruta Demo'").fetchone()["id"]
-            op_id = con.execute("SELECT id FROM usuarios WHERE username='operador'").fetchone()["id"]
-
-            # Asignar operador a ruta
-            con.execute("INSERT INTO usuario_ruta(usuario_id,ruta_id,activo) VALUES (?,?,1)", (op_id, ruta_id))
-            
-            # Asignar cliente a ruta (nuevo sistema)
-            con.execute("INSERT INTO cliente_ruta(cliente_id,ruta_id,activo,created_at,created_by) VALUES (?,?,1,?,?)",
-                       (cliente_id, ruta_id, now_iso(), admin_id))
-            
-            # Mantener maquina_ruta para compatibilidad (opcional)
-            for row in con.execute("SELECT id FROM maquinas").fetchall():
-                con.execute("INSERT INTO maquina_ruta(maquina_id,ruta_id,activo) VALUES (?,?,1)", (row["id"], ruta_id))
-            con.commit()
-
-    finally:
-        con.close()
+        # Asignar operador a ruta
+        con.execute("INSERT INTO usuario_ruta(usuario_id,ruta_id,activo) VALUES (?,?,1)", (op_id, ruta_id))
+        
+        # Asignar cliente a ruta (nuevo sistema)
+        con.execute("INSERT INTO cliente_ruta(cliente_id,ruta_id,activo,created_at,created_by) VALUES (?,?,1,?,?)",
+                   (cliente_id, ruta_id, now_iso(), admin_id))
+        
+        # Mantener maquina_ruta para compatibilidad (opcional)
+        for row in con.execute("SELECT id FROM maquinas").fetchall():
+            con.execute("INSERT INTO maquina_ruta(maquina_id,ruta_id,activo) VALUES (?,?,1)", (row["id"], ruta_id))
+        con.commit()
+    
+    # Cerrar conexión
+    con.close()

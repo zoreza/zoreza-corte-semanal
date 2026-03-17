@@ -331,19 +331,19 @@ def page_admin(user: dict):
                 """)
             
             # Formulario de configuración
-            current_config = turso_service.get_turso_config()
+            current_url, current_token = turso_service.get_turso_config()
             
             with st.form("turso_config"):
                 turso_url = st.text_input(
                     "Turso Database URL",
-                    value=current_config["url"],
+                    value=current_url,
                     placeholder="libsql://your-database.turso.io",
                     help="URL de tu base de datos en Turso"
                 )
                 
                 turso_token = st.text_input(
                     "Turso Auth Token",
-                    value=current_config["auth_token"],
+                    value=current_token,
                     type="password",
                     placeholder="eyJhbGciOiJFZERTQS...",
                     help="Token de autenticación de Turso"
@@ -398,14 +398,14 @@ def page_admin(user: dict):
                 # para permitir migración incluso cuando el fallback está activo
                 if turso_service.has_turso_credentials():
                     local_path = db_path()
-                    config = turso_service.get_turso_config()
+                    config_url, config_token = turso_service.get_turso_config()
                     
                     if st.button("🚀 Migrar Datos Locales a Turso", type="primary"):
                         with st.spinner("Migrando datos..."):
                             success, message, stats = turso_service.migrate_local_to_turso(
                                 local_path,
-                                config["url"],
-                                config["auth_token"]
+                                config_url,
+                                config_token
                             )
                         
                         if success:

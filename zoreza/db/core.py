@@ -243,19 +243,10 @@ def db_path() -> str:
 def connect():
     """
     Crea una conexión a la base de datos.
-    Usa Turso si está configurado, sino usa SQLite local.
+    TEMPORALMENTE DESACTIVADO TURSO - Solo usa SQLite local.
     """
-    # Verificar si Turso está configurado
-    if TURSO_SUPPORT and turso_service.is_turso_configured():
-        # Usar Turso (retorna un cliente compatible)
-        config = turso_service.get_turso_config()
-        
-        # Validar que las credenciales no estén vacías
-        if config["url"] and config["auth_token"]:
-            print(f"🌐 Usando Turso: {config['url']}")
-            return turso_service.create_turso_client(config["url"], config["auth_token"])
-        else:
-            print("⚠️ Credenciales de Turso vacías, usando SQLite local")
+    # TURSO DESACTIVADO TEMPORALMENTE PARA RESOLVER PROBLEMAS DE LOGIN
+    # TODO: Reactivar cuando se resuelvan los problemas de compatibilidad
     
     # Usar SQLite local (comportamiento original)
     print("📁 Usando SQLite local")
@@ -268,8 +259,7 @@ def connect():
 
 def get_db_type() -> str:
     """Retorna el tipo de BD en uso: 'turso' o 'local'"""
-    if TURSO_SUPPORT and turso_service.is_turso_configured():
-        return "turso"
+    # TURSO DESACTIVADO TEMPORALMENTE
     return "local"
 
 def now_iso() -> str:

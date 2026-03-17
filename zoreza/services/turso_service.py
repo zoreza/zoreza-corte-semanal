@@ -44,8 +44,8 @@ def has_turso_credentials() -> bool:
     
     if STREAMLIT_AVAILABLE:
         try:
-            url = st.secrets.get("TURSO_DATABASE_URL")
-            token = st.secrets.get("TURSO_AUTH_TOKEN")
+            url = st.secrets["TURSO_DATABASE_URL"]
+            token = st.secrets["TURSO_AUTH_TOKEN"]
         except:
             pass
     
@@ -71,7 +71,7 @@ def is_turso_configured() -> bool:
     return has_turso_credentials()
 
 
-def get_turso_config() -> dict[str, str]:
+def get_turso_config() -> tuple[str, str]:
     """Obtiene la configuración de Turso desde Streamlit Secrets o variables de entorno."""
     url = ""
     token = ""
@@ -79,8 +79,8 @@ def get_turso_config() -> dict[str, str]:
     # Intentar leer desde Streamlit Secrets primero
     if STREAMLIT_AVAILABLE:
         try:
-            url = st.secrets.get("TURSO_DATABASE_URL", "")
-            token = st.secrets.get("TURSO_AUTH_TOKEN", "")
+            url = st.secrets["TURSO_DATABASE_URL"]
+            token = st.secrets["TURSO_AUTH_TOKEN"]
         except:
             pass
     
@@ -90,10 +90,7 @@ def get_turso_config() -> dict[str, str]:
     if not token:
         token = os.getenv("TURSO_AUTH_TOKEN", "")
     
-    return {
-        "url": url,
-        "auth_token": token
-    }
+    return url, token
 
 
 def set_turso_config(url: str, auth_token: str) -> None:
@@ -369,11 +366,11 @@ def get_db_status() -> dict[str, Any]:
         dict con: type (local/turso), configured (bool), url (str), details (dict)
     """
     if is_turso_configured():
-        config = get_turso_config()
+        url, token = get_turso_config()
         return {
             "type": "turso",
             "configured": True,
-            "url": config["url"],
+            "url": url,
             "details": {
                 "provider": "Turso (SQLite en la nube)",
                 "connection": "HTTP API",

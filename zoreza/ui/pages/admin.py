@@ -238,15 +238,54 @@ def page_admin(user: dict):
     with tab[5]:
         st.subheader("Configuración Global")
         cfg = get_config()
-        keys = ["tolerancia_pesos","fondo_sugerido","semana_inicia","ticket_negocio_nombre","ticket_footer"]
-        for k in keys:
-            val = cfg.get(k,"")
-            new = st.text_input(k, value=val, key=f"cfg_{k}")
-            if new != val:
-                if st.button(f"Guardar {k}", key=f"savecfg_{k}"):
-                    set_config(k, new, user["id"])
-                    st.success("Guardado.")
-                    st.rerun()
+        
+        # Usar un formulario para guardar todos los cambios a la vez
+        with st.form("config_form"):
+            st.caption("Modifica los valores y presiona 'Guardar Configuración' al final")
+            
+            config_values = {}
+            config_values["tolerancia_pesos"] = st.text_input(
+                "Tolerancia de Pesos",
+                value=cfg.get("tolerancia_pesos", ""),
+                help="Tolerancia permitida en diferencias de peso"
+            )
+            config_values["fondo_sugerido"] = st.text_input(
+                "Fondo Sugerido",
+                value=cfg.get("fondo_sugerido", ""),
+                help="Monto sugerido para fondo de caja"
+            )
+            config_values["semana_inicia"] = st.text_input(
+                "Semana Inicia",
+                value=cfg.get("semana_inicia", ""),
+                help="Día en que inicia la semana (ej: Lunes)"
+            )
+            config_values["ticket_negocio_nombre"] = st.text_input(
+                "Nombre del Negocio (Ticket)",
+                value=cfg.get("ticket_negocio_nombre", ""),
+                help="Nombre que aparece en los tickets"
+            )
+            config_values["ticket_footer"] = st.text_area(
+                "Pie de Página (Ticket)",
+                value=cfg.get("ticket_footer", ""),
+                help="Texto que aparece al final de los tickets"
+            )
+            
+            submitted = st.form_submit_button("💾 Guardar Configuración", type="primary", use_container_width=True)
+        
+        if submitted:
+            # Guardar todos los cambios
+            changes_made = False
+            for key, new_value in config_values.items():
+                old_value = cfg.get(key, "")
+                if new_value != old_value:
+                    set_config(key, new_value, user["id"])
+                    changes_made = True
+            
+            if changes_made:
+                st.success("✅ Configuración guardada exitosamente")
+                st.rerun()
+            else:
+                st.info("ℹ️ No hay cambios que guardar")
 
         st.divider()
         st.subheader("Catálogos")
@@ -260,14 +299,17 @@ def page_admin(user: dict):
             cats = repo.list_cats(table)
             st.dataframe(cats, use_container_width=True, hide_index=True)
             with st.expander(f"Agregar/Editar en {title}"):
-                cat_id = st.selectbox("Editar (opcional)", [None] + [c["id"] for c in cats], format_func=lambda x: "(nuevo)" if x is None else f"id={x}", key=f"cat_pick_{table}")
-                current = next((c for c in cats if c["id"] == cat_id), None)
-                nombre = st.text_input("nombre", value=(current["nombre"] if current else ""), key=f"cat_name_{table}")
-                req = st.checkbox("requiere_nota", value=bool(current["requiere_nota"]) if current else False, key=f"cat_req_{table}")
-                act = st.checkbox("activo", value=bool(current["activo"]) if current else True, key=f"cat_act_{table}")
-                if st.button("Guardar catálogo", key=f"cat_save_{table}"):
+                with st.form(f"cat_form_{table}"):
+                    cat_id = st.selectbox("Editar (opcional)", [None] + [c["id"] for c in cats], format_func=lambda x: "(nuevo)" if x is None else f"id={x}", key=f"cat_pick_{table}")
+                    current = next((c for c in cats if c["id"] == cat_id), None)
+                    nombre = st.text_input("nombre", value=(current["nombre"] if current else ""), key=f"cat_name_{table}")
+                    req = st.checkbox("requiere_nota", value=bool(current["requiere_nota"]) if current else False, key=f"cat_req_{table}")
+                    act = st.checkbox("activo", value=bool(current["activo"]) if current else True, key=f"cat_act_{table}")
+                    submitted = st.form_submit_button("💾 Guardar catálogo", use_container_width=True)
+                
+                if submitted:
                     repo.upsert_cat(table, cat_id, nombre.strip(), 1 if req else 0, 1 if act else 0)
-                    st.success("Guardado.")
+                    st.success("✅ Guardado.")
                     st.rerun()
 
     

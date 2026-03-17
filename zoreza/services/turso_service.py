@@ -177,6 +177,31 @@ def create_turso_client(url: str, auth_token: str) -> Any:
     
     http_url = _convert_turso_url_to_http(url)
     
+    class TursoRow:
+        """Clase que simula sqlite3.Row para Turso."""
+        def __init__(self, columns: list, values: list):
+            self._columns = columns
+            self._values = values
+            self._dict = dict(zip(columns, values))
+        
+        def __getitem__(self, key):
+            """Permite acceso por índice o nombre de columna."""
+            if isinstance(key, int):
+                return self._values[key]
+            return self._dict[key]
+        
+        def keys(self):
+            """Retorna nombres de columnas."""
+            return self._columns
+        
+        def __iter__(self):
+            """Permite iterar sobre los valores."""
+            return iter(self._values)
+        
+        def __len__(self):
+            """Retorna número de columnas."""
+            return len(self._values)
+    
     class TursoCursor:
         """Cursor compatible con sqlite3 para Turso."""
         def __init__(self, client, sql: str, params: tuple):
@@ -187,7 +212,7 @@ def create_turso_client(url: str, auth_token: str) -> Any:
             self._executed = False
         
         def fetchone(self):
-            """Retorna una fila."""
+            """Retorna una fila como TursoRow."""
             if not self._executed:
                 self._result = self.client._execute_internal(self.sql, self.params)
                 self._executed = True
@@ -196,7 +221,7 @@ def create_turso_client(url: str, auth_token: str) -> Any:
             return rows[0] if rows else None
         
         def fetchall(self):
-            """Retorna todas las filas."""
+            """Retorna todas las filas como TursoRow."""
             if not self._executed:
                 self._result = self.client._execute_internal(self.sql, self.params)
                 self._executed = True
@@ -204,15 +229,19 @@ def create_turso_client(url: str, auth_token: str) -> Any:
             return self._get_rows()
         
         def _get_rows(self):
-            """Extrae filas del resultado de Turso."""
+            """Extrae filas del resultado de Turso y las convierte a TursoRow."""
             if not self._result:
                 return []
             
             if "results" in self._result and len(self._result["results"]) > 0:
-                query_result = self._result["results"][0]["response"]["result"]
-                if "rows" in query_result:
-                    # Convertir a tuplas para compatibilidad con sqlite3
-                    return [tuple(row) for row in query_result["rows"]]
+                response = self._result["results"][0]["response"]
+                if "result" in response:
+                    result = response["result"]
+                    if "rows" in result and "columns" in result:
+                        columns = result["columns"]
+                        rows = result["rows"]
+                        # Convertir cada fila a TursoRow
+                        return [TursoRow(columns, row) for row in rows]
             
             return []
     

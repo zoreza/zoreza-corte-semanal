@@ -362,42 +362,31 @@ def db_path() -> str:
 
 def connect():
     """
-    Crea una conexión a la base de datos con fallback automático.
-    Usa Turso (SQLite en la nube) si está configurado, con fallback a SQLite local.
+    Crea una conexión a la base de datos.
+    Usa Turso (SQLite en la nube) si está configurado, con fallback a SQLite local solo en caso de error.
     """
-    primary_conn = None
-    fallback_conn = None
-    
     # Verificar si Turso está configurado
-    if TURSO_SUPPORT and turso_service and sync_service:
+    if TURSO_SUPPORT and turso_service:
         from zoreza.services.turso_service import is_turso_configured, create_turso_client, get_turso_config
-        
-        # Si ya estamos en modo fallback, usar solo SQLite local
-        if sync_service.is_using_fallback():
-            print("⚠️ Modo fallback activo - usando SQLite local")
-            path = db_path()
-            Path(path).parent.mkdir(parents=True, exist_ok=True)
-            con = sqlite3.connect(path, check_same_thread=False)
-            con.row_factory = sqlite3.Row
-            con.execute("PRAGMA foreign_keys = ON;")
-            return con
         
         if is_turso_configured():
             try:
                 url, token = get_turso_config()
                 primary_conn = create_turso_client(url, token)
                 
-                # Crear wrapper con fallback automático
-                wrapper = FallbackConnection(primary_conn, fallback_conn)
-                wrapper.row_factory = sqlite3.Row
-                return wrapper
+                # Probar la conexión con una query simple
+                try:
+                    primary_conn.execute("SELECT 1").fetchone()
+                    # Si llegamos aquí, Turso funciona correctamente
+                    primary_conn.row_factory = sqlite3.Row
+                    return primary_conn
+                except Exception as test_error:
+                    print(f"⚠️ Error al probar conexión Turso: {test_error}")
+                    # Continuar al fallback
                 
             except Exception as e:
-                print(f"⚠️ Error al conectar con Turso: {e}")
-                print("📁 Usando SQLite local como fallback")
-                
-                if sync_service:
-                    sync_service.mark_turso_failed(str(e))
+                print(f"⚠️ Error al crear cliente Turso: {e}")
+                print("📁 Cayendo a SQLite local")
     
     # Usar SQLite local (comportamiento por defecto)
     path = db_path()

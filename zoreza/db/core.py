@@ -341,16 +341,31 @@ def init_db(seed: bool = True):
     con.commit()
 
     # users if empty - SOLO CREAR ADMIN
+    print("🔍 Verificando usuarios existentes...")
     result = con.execute("SELECT COUNT(*) AS n FROM usuarios").fetchone()
     n_users = result["n"] if result else 0
+    print(f"📊 Usuarios encontrados: {n_users}")
+    
     if n_users == 0:
         print("📝 Creando usuario admin...")
+        password_hash = hash_password("admin123")
+        print(f"🔐 Hash generado: {password_hash[:20]}...")
+        
         con.execute(
             "INSERT INTO usuarios(username,password_hash,nombre,rol,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,1,?,?,NULL,NULL)",
-            ("admin", hash_password("admin123"), "Admin Zoreza", "ADMIN", now_iso(), now_iso()),
+            ("admin", password_hash, "Admin Zoreza", "ADMIN", now_iso(), now_iso()),
         )
         con.commit()
-        print("✅ Usuario admin creado exitosamente")
+        print("✅ Usuario admin insertado")
+        
+        # Verificar que se creó
+        verify = con.execute("SELECT username, rol, activo FROM usuarios WHERE username='admin'").fetchone()
+        if verify:
+            print(f"✅ Usuario admin verificado: {dict(verify)}")
+        else:
+            print("❌ ERROR: Usuario admin NO se creó correctamente")
+    else:
+        print(f"ℹ️ Ya existen {n_users} usuarios, no se creará admin")
     
     # NO CREAR DATOS DEMO - El usuario los llenará manualmente
     

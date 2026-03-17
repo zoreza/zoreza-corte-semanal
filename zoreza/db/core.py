@@ -340,73 +340,19 @@ def init_db(seed: bool = True):
             )
     con.commit()
 
-    # users if empty
+    # users if empty - SOLO CREAR ADMIN
     result = con.execute("SELECT COUNT(*) AS n FROM usuarios").fetchone()
     n_users = result["n"] if result else 0
     if n_users == 0:
+        print("📝 Creando usuario admin...")
         con.execute(
             "INSERT INTO usuarios(username,password_hash,nombre,rol,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,1,?,?,NULL,NULL)",
             ("admin", hash_password("admin123"), "Admin Zoreza", "ADMIN", now_iso(), now_iso()),
         )
-        con.execute(
-            "INSERT INTO usuarios(username,password_hash,nombre,rol,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,1,?,?,NULL,NULL)",
-            ("operador", hash_password("operador123"), "Operador Zoreza", "OPERADOR", now_iso(), now_iso()),
-        )
         con.commit()
-
-    # seed minimal entities if empty
-    result = con.execute("SELECT COUNT(*) AS n FROM clientes").fetchone()
-    n_clientes = result["n"] if result else 0
-    if n_clientes == 0:
-        result = con.execute("SELECT id FROM usuarios WHERE username='admin'").fetchone()
-        if not result:
-            return  # No hay admin, no podemos continuar
-        admin_id = result["id"]
-        
-        con.execute(
-            "INSERT INTO clientes(nombre,comision_pct,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
-            ("Cliente Demo", 0.40, now_iso(), now_iso(), admin_id, admin_id),
-        )
-        
-        result = con.execute("SELECT id FROM clientes WHERE nombre='Cliente Demo'").fetchone()
-        if not result:
-            return  # No se pudo crear cliente
-        cliente_id = result["id"]
-        
-        con.execute(
-            "INSERT INTO maquinas(codigo,cliente_id,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
-            ("M-001", cliente_id, now_iso(), now_iso(), admin_id, admin_id),
-        )
-        con.execute(
-            "INSERT INTO maquinas(codigo,cliente_id,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
-            ("M-002", cliente_id, now_iso(), now_iso(), admin_id, admin_id),
-        )
-        con.execute(
-            "INSERT INTO rutas(nombre,descripcion,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
-            ("Ruta Demo", "Ruta inicial", now_iso(), now_iso(), admin_id, admin_id),
-        )
-        
-        result = con.execute("SELECT id FROM rutas WHERE nombre='Ruta Demo'").fetchone()
-        if not result:
-            return  # No se pudo crear ruta
-        ruta_id = result["id"]
-        
-        result = con.execute("SELECT id FROM usuarios WHERE username='operador'").fetchone()
-        if not result:
-            return  # No hay operador
-        op_id = result["id"]
-
-        # Asignar operador a ruta
-        con.execute("INSERT INTO usuario_ruta(usuario_id,ruta_id,activo) VALUES (?,?,1)", (op_id, ruta_id))
-        
-        # Asignar cliente a ruta (nuevo sistema)
-        con.execute("INSERT INTO cliente_ruta(cliente_id,ruta_id,activo,created_at,created_by) VALUES (?,?,1,?,?)",
-                   (cliente_id, ruta_id, now_iso(), admin_id))
-        
-        # Mantener maquina_ruta para compatibilidad (opcional)
-        for row in con.execute("SELECT id FROM maquinas").fetchall():
-            con.execute("INSERT INTO maquina_ruta(maquina_id,ruta_id,activo) VALUES (?,?,1)", (row["id"], ruta_id))
-        con.commit()
+        print("✅ Usuario admin creado exitosamente")
+    
+    # NO CREAR DATOS DEMO - El usuario los llenará manualmente
     
     # Cerrar conexión
     con.close()

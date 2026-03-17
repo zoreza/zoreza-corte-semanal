@@ -243,24 +243,13 @@ def db_path() -> str:
 def connect():
     """
     Crea una conexión a la base de datos.
-    Intenta usar Turso si está configurado, sino usa SQLite local.
+    TURSO TEMPORALMENTE DESACTIVADO - Usar SQLite local hasta resolver problemas.
     """
-    from zoreza.services.turso_service import is_turso_configured, create_turso_client, get_turso_config
-    
-    # Intentar usar Turso si está configurado
-    if is_turso_configured():
-        try:
-            print("☁️ Conectando a Turso...")
-            url, token = get_turso_config()
-            client = create_turso_client(url, token)
-            print("✅ Conexión a Turso establecida")
-            return client
-        except Exception as e:
-            print(f"⚠️ Error al conectar a Turso: {e}")
-            print("📁 Fallback a SQLite local")
+    # DESACTIVAR TURSO TEMPORALMENTE
+    # from zoreza.services.turso_service import is_turso_configured, create_turso_client, get_turso_config
     
     # Usar SQLite local (comportamiento original)
-    print("📁 Usando SQLite local")
+    print("📁 Usando SQLite local (Turso desactivado temporalmente)")
     path = db_path()
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(path, check_same_thread=False)

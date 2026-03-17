@@ -341,7 +341,8 @@ def init_db(seed: bool = True):
     con.commit()
 
     # users if empty
-    n_users = con.execute("SELECT COUNT(*) AS n FROM usuarios").fetchone()["n"]
+    result = con.execute("SELECT COUNT(*) AS n FROM usuarios").fetchone()
+    n_users = result["n"] if result else 0
     if n_users == 0:
         con.execute(
             "INSERT INTO usuarios(username,password_hash,nombre,rol,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,1,?,?,NULL,NULL)",

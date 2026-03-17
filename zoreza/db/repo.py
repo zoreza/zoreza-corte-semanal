@@ -2,17 +2,17 @@ from __future__ import annotations
 from zoreza.db.queries import fetchall, fetchone, execute, execute_returning_id
 from zoreza.db.core import now_iso, connect
 
-def list_usuarios():
+def list_usuarios() -> list[dict]:
     return fetchall("SELECT id,username,nombre,rol,activo,created_at,updated_at FROM usuarios ORDER BY id")
 
-def create_usuario(username: str, password_hash: str, nombre: str, rol: str, activo: int, actor_id: int | None):
+def create_usuario(username: str, password_hash: str, nombre: str, rol: str, activo: int, actor_id: int | None) -> int:
     ts = now_iso()
     return execute_returning_id(
         "INSERT INTO usuarios(username,password_hash,nombre,rol,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,?,?,?,?,?)",
         (username, password_hash, nombre, rol, int(activo), ts, ts, actor_id, actor_id),
     )
 
-def update_usuario(user_id: int, nombre: str, rol: str, activo: int, actor_id: int | None, password_hash: str | None = None):
+def update_usuario(user_id: int, nombre: str, rol: str, activo: int, actor_id: int | None, password_hash: str | None = None) -> None:
     ts = now_iso()
     if password_hash:
         execute(
@@ -25,7 +25,7 @@ def update_usuario(user_id: int, nombre: str, rol: str, activo: int, actor_id: i
             (nombre, rol, int(activo), ts, actor_id, user_id),
         )
 
-def list_clientes():
+def list_clientes() -> list[dict]:
     return fetchall("SELECT * FROM clientes ORDER BY nombre")
 
 def create_cliente(nombre: str, comision_pct: float, activo: int, actor_id: int | None,
@@ -46,7 +46,7 @@ def update_cliente(cliente_id: int, nombre: str, comision_pct: float, activo: in
         (nombre, float(comision_pct), domicilio, colonia, telefono, poblacion, int(activo), ts, actor_id, cliente_id),
     )
 
-def list_maquinas():
+def list_maquinas() -> list[dict]:
     return fetchall(
         """
         SELECT m.*, c.nombre AS cliente_nombre
@@ -71,10 +71,10 @@ def update_maquina(maquina_id: int, codigo: str, cliente_id: int, activo: int, a
         (codigo, int(cliente_id), numero_permiso, fecha_permiso, int(asignada), int(activo), ts, actor_id, maquina_id),
     )
 
-def list_rutas():
+def list_rutas() -> list[dict]:
     return fetchall("SELECT * FROM rutas ORDER BY nombre")
 
-def create_ruta(nombre: str, descripcion: str, activo: int, actor_id: int | None):
+def create_ruta(nombre: str, descripcion: str, activo: int, actor_id: int | None) -> int:
     ts = now_iso()
     return execute_returning_id(
         "INSERT INTO rutas(nombre,descripcion,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,?,?,?,?,?)",

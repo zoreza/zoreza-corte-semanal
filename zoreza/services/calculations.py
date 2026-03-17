@@ -37,7 +37,7 @@ def calc_machine(
         monto_estimado_contadores=monto_estimado,
     )
 
-def reparto(neto_cliente: float, comision_pct: float):
+def reparto(neto_cliente: float, comision_pct: float) -> tuple[float, float]:
     pago_cliente = neto_cliente * comision_pct
     ganancia_dueno = neto_cliente - pago_cliente
     return pago_cliente, ganancia_dueno

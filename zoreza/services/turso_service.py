@@ -5,7 +5,6 @@ Usa API HTTP directa para evitar problemas con WebSocket.
 """
 
 import os
-import json
 import sqlite3
 from typing import Any, Optional
 from pathlib import Path
@@ -28,7 +27,7 @@ except ImportError:
 _FORCE_LOCAL = False
 
 
-def force_local_db():
+def force_local_db() -> None:
     """Fuerza el uso de SQLite local (desactiva Turso)."""
     global _FORCE_LOCAL
     _FORCE_LOCAL = True
@@ -256,8 +255,15 @@ def create_turso_client(url: str, auth_token: str) -> Any:
             """Ejecuta una query SQL y retorna un cursor."""
             return TursoCursor(self, sql, params)
         
-        def _execute_internal(self, sql: str, params: tuple = ()) -> Any:
-            """Ejecuta una query SQL."""
+        def _execute_internal(self, sql: str, params: tuple = (), close_after: bool = True) -> Any:
+            """
+            Ejecuta una query SQL en Turso.
+            
+            Args:
+                sql: Query SQL a ejecutar
+                params: Parámetros de la query
+                close_after: Si True, cierra la conexión después (commit automático)
+            """
             # Convertir parámetros a formato compatible con Turso
             # Formato correcto según API de Turso: cada valor necesita "type" + valor específico
             args = []
@@ -281,20 +287,28 @@ def create_turso_client(url: str, auth_token: str) -> Any:
                         # Fallback: convertir a string
                         args.append({"type": "text", "value": str(param)})
             
+            # Construir el request para Turso
+            # IMPORTANTE: Usar "close" para hacer commit automático en operaciones de escritura
+            request_data = {
+                "requests": [
+                    {
+                        "type": "execute",
+                        "stmt": {
+                            "sql": sql,
+                            "args": args
+                        }
+                    }
+                ]
+            }
+            
+            # Si es una operación de escritura, agregar close para commit automático
+            if close_after and self._is_write_operation(sql):
+                request_data["requests"].append({"type": "close"})
+            
             response = requests.post(
                 f"{self.base_url}/v2/pipeline",
                 headers=self.headers,
-                json={
-                    "requests": [
-                        {
-                            "type": "execute",
-                            "stmt": {
-                                "sql": sql,
-                                "args": args
-                            }
-                        }
-                    ]
-                },
+                json=request_data,
                 timeout=30
             )
             
@@ -302,6 +316,12 @@ def create_turso_client(url: str, auth_token: str) -> Any:
                 raise Exception(f"Turso error {response.status_code}: {response.text}")
             
             return response.json()
+        
+        def _is_write_operation(self, sql: str) -> bool:
+            """Detecta si una operación SQL es de escritura."""
+            sql_upper = sql.strip().upper()
+            write_keywords = ['INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP', 'REPLACE']
+            return any(sql_upper.startswith(keyword) for keyword in write_keywords)
         
         def fetchall(self, sql: str, params: tuple = ()) -> list:
             """Ejecuta query y retorna todas las filas (método de conveniencia)."""
@@ -348,8 +368,28 @@ def create_turso_client(url: str, auth_token: str) -> Any:
                         raise
         
         def commit(self):
-            """No-op para compatibilidad con sqlite3."""
-            pass
+            """
+            Commit explícito - envía un close para persistir cambios.
+            En Turso, esto asegura que todas las operaciones previas se persistan.
+            """
+            try:
+                # Enviar un close explícito para asegurar persistencia
+                response = requests.post(
+                    f"{self.base_url}/v2/pipeline",
+                    headers=self.headers,
+                    json={
+                        "requests": [
+                            {"type": "close"}
+                        ]
+                    },
+                    timeout=10
+                )
+                
+                if response.status_code != 200:
+                    print(f"⚠️ Warning: commit() retornó status {response.status_code}")
+            except Exception as e:
+                print(f"⚠️ Warning: Error en commit(): {e}")
+                # No lanzar excepción para mantener compatibilidad
         
         def close(self):
             """No-op para compatibilidad con sqlite3."""

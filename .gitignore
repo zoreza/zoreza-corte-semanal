@@ -35,7 +35,6 @@ env/
 *.swp
 *.swo
 *~
-.DS_Store
 
 # Database
 *.db
@@ -43,6 +42,7 @@ env/
 *.sqlite3
 data/*.db
 data/*.sqlite
+data/sync_state.json
 
 # Backups
 backups/

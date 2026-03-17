@@ -1,4 +1,4 @@
-import base64, hashlib, hmac, os, secrets
+import base64, hashlib, hmac, secrets
 
 # PBKDF2-SHA256 (stdlib) — formato:
 # pbkdf2_sha256$<iterations>$<salt_b64>$<hash_b64>

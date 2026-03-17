@@ -5,13 +5,15 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from zoreza.services.passwords import hash_password
 
-# Intentar importar soporte para Turso
+# Intentar importar soporte para Turso y sincronización
 try:
     from zoreza.services import turso_service
+    from zoreza.services import sync_service
     TURSO_SUPPORT = True
 except ImportError:
     TURSO_SUPPORT = False
     turso_service = None
+    sync_service = None
 
 SCHEMA_SQL = """
 PRAGMA foreign_keys = ON;
@@ -237,19 +239,167 @@ DEFAULT_CATS = {
     ],
 }
 
+
+class FallbackConnection:
+    """
+    Wrapper de conexión que maneja fallback automático entre Turso y SQLite local.
+    Si Turso falla, guarda operaciones en cola y usa SQLite local.
+    """
+    def __init__(self, primary_conn, fallback_conn=None):
+        self.primary_conn = primary_conn
+        self.fallback_conn = fallback_conn
+        self.using_fallback = False
+        self._row_factory = None
+    
+    @property
+    def row_factory(self):
+        return self._row_factory
+    
+    @row_factory.setter
+    def row_factory(self, value):
+        self._row_factory = value
+        if self.primary_conn:
+            self.primary_conn.row_factory = value
+        if self.fallback_conn:
+            self.fallback_conn.row_factory = value
+    
+    def execute(self, sql: str, params: tuple = ()):
+        """Ejecuta query con fallback automático."""
+        # Intentar con conexión primaria (Turso)
+        if not self.using_fallback and self.primary_conn:
+            try:
+                result = self.primary_conn.execute(sql, params)
+                return result
+            except Exception as e:
+                print(f"⚠️ Error en Turso: {e}")
+                print("🔄 Activando fallback a SQLite local...")
+                
+                # Marcar que Turso falló
+                if sync_service:
+                    sync_service.mark_turso_failed(str(e))
+                
+                self.using_fallback = True
+                
+                # Crear conexión fallback si no existe
+                if not self.fallback_conn:
+                    self.fallback_conn = self._create_fallback_connection()
+        
+        # Usar fallback (SQLite local)
+        if self.fallback_conn:
+            result = self.fallback_conn.execute(sql, params)
+            
+            # Guardar operación en cola si es escritura
+            if sync_service and self._is_write_operation(sql):
+                sync_service.add_pending_operation("execute", sql, params)
+            
+            return result
+        
+        raise Exception("No hay conexión disponible (ni Turso ni fallback)")
+    
+    def commit(self):
+        """Commit con fallback."""
+        if self.using_fallback and self.fallback_conn:
+            self.fallback_conn.commit()
+        elif self.primary_conn:
+            try:
+                self.primary_conn.commit()
+            except Exception as e:
+                print(f"⚠️ Error en commit de Turso: {e}")
+                if sync_service:
+                    sync_service.mark_turso_failed(str(e))
+                self.using_fallback = True
+                if self.fallback_conn:
+                    self.fallback_conn.commit()
+    
+    def executescript(self, script: str):
+        """Ejecuta script SQL con fallback."""
+        if self.using_fallback and self.fallback_conn:
+            return self.fallback_conn.executescript(script)
+        elif self.primary_conn:
+            try:
+                return self.primary_conn.executescript(script)
+            except Exception as e:
+                print(f"⚠️ Error en executescript de Turso: {e}")
+                if sync_service:
+                    sync_service.mark_turso_failed(str(e))
+                self.using_fallback = True
+                if not self.fallback_conn:
+                    self.fallback_conn = self._create_fallback_connection()
+                return self.fallback_conn.executescript(script)
+        
+        raise Exception("No hay conexión disponible")
+    
+    def close(self):
+        """Cierra ambas conexiones."""
+        if self.primary_conn:
+            try:
+                self.primary_conn.close()
+            except:
+                pass
+        if self.fallback_conn:
+            try:
+                self.fallback_conn.close()
+            except:
+                pass
+    
+    def _create_fallback_connection(self):
+        """Crea conexión SQLite local para fallback."""
+        path = db_path()
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        con = sqlite3.connect(path, check_same_thread=False)
+        con.row_factory = self._row_factory or sqlite3.Row
+        con.execute("PRAGMA foreign_keys = ON;")
+        return con
+    
+    def _is_write_operation(self, sql: str) -> bool:
+        """Detecta si una operación SQL es de escritura."""
+        sql_upper = sql.strip().upper()
+        write_keywords = ['INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP']
+        return any(sql_upper.startswith(keyword) for keyword in write_keywords)
+
 def db_path() -> str:
     return os.getenv("ZOREZA_DB_PATH", "./data/zoreza.db")
 
 def connect():
     """
-    Crea una conexión a la base de datos.
-    TURSO TEMPORALMENTE DESACTIVADO - Usar SQLite local hasta resolver problemas.
+    Crea una conexión a la base de datos con fallback automático.
+    Usa Turso (SQLite en la nube) si está configurado, con fallback a SQLite local.
     """
-    # DESACTIVAR TURSO TEMPORALMENTE
-    # from zoreza.services.turso_service import is_turso_configured, create_turso_client, get_turso_config
+    primary_conn = None
+    fallback_conn = None
     
-    # Usar SQLite local (comportamiento original)
-    print("📁 Usando SQLite local (Turso desactivado temporalmente)")
+    # Verificar si Turso está configurado
+    if TURSO_SUPPORT and turso_service and sync_service:
+        from zoreza.services.turso_service import is_turso_configured, create_turso_client, get_turso_config
+        
+        # Si ya estamos en modo fallback, usar solo SQLite local
+        if sync_service.is_using_fallback():
+            print("⚠️ Modo fallback activo - usando SQLite local")
+            path = db_path()
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+            con = sqlite3.connect(path, check_same_thread=False)
+            con.row_factory = sqlite3.Row
+            con.execute("PRAGMA foreign_keys = ON;")
+            return con
+        
+        if is_turso_configured():
+            try:
+                url, token = get_turso_config()
+                primary_conn = create_turso_client(url, token)
+                
+                # Crear wrapper con fallback automático
+                wrapper = FallbackConnection(primary_conn, fallback_conn)
+                wrapper.row_factory = sqlite3.Row
+                return wrapper
+                
+            except Exception as e:
+                print(f"⚠️ Error al conectar con Turso: {e}")
+                print("📁 Usando SQLite local como fallback")
+                
+                if sync_service:
+                    sync_service.mark_turso_failed(str(e))
+    
+    # Usar SQLite local (comportamiento por defecto)
     path = db_path()
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(path, check_same_thread=False)
@@ -258,12 +408,9 @@ def connect():
     return con
 
 def get_db_type() -> str:
-    """Retorna el tipo de base de datos en uso."""
+    """Retorna el tipo de base de datos en uso: 'turso' o 'local'."""
     from zoreza.services.turso_service import is_turso_configured
     return "turso" if is_turso_configured() else "local"
-    """Retorna el tipo de BD en uso: 'turso' o 'local'"""
-    # TURSO DESACTIVADO TEMPORALMENTE
-    return "local"
 
 def now_iso() -> str:
     """Retorna timestamp actual en zona horaria configurada."""

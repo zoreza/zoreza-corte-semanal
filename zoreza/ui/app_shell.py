@@ -25,6 +25,64 @@ def run_app():
 
     user = st.session_state.user
     
+    # Banner de alerta si hay problemas de sincronización
+    try:
+        from zoreza.services import sync_service
+        if sync_service and sync_service.has_pending_operations():
+            pending_count = sync_service.get_pending_count()
+            sync_state = sync_service.get_sync_state()
+            
+            st.markdown(f"""
+                <div style="
+                    background-color: #DC3545;
+                    color: white;
+                    padding: 1rem;
+                    border-radius: 0.5rem;
+                    margin-bottom: 1rem;
+                    border-left: 5px solid #A71D2A;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                ">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.5rem;">⚠️</span>
+                        <div>
+                            <strong style="font-size: 1.1rem;">MODO FALLBACK ACTIVO</strong>
+                            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">
+                                La conexión con la base de datos en la nube falló.
+                                Los cambios se están guardando localmente.
+                            </p>
+                            <p style="margin: 0.3rem 0 0 0; font-size: 0.85rem; opacity: 0.9;">
+                                📝 <strong>{pending_count}</strong> operaciones pendientes de sincronizar
+                            </p>
+                            {f'<p style="margin: 0.3rem 0 0 0; font-size: 0.8rem; opacity: 0.8;">Último error: {sync_state.get("last_error", "Desconocido")}</p>' if sync_state.get("last_error") else ''}
+                        </div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # Botón para intentar sincronizar (solo para ADMIN)
+            if user["rol"] == "ADMIN":
+                col1, col2, col3 = st.columns([2, 1, 1])
+                with col2:
+                    if st.button("🔄 Intentar Sincronizar", key="sync_now", type="primary"):
+                        with st.spinner("Sincronizando..."):
+                            success, message, count = sync_service.sync_pending_operations()
+                            if success:
+                                st.success(message)
+                                st.rerun()
+                            else:
+                                st.error(message)
+                with col3:
+                    if st.button("ℹ️ Ver Detalles", key="sync_details"):
+                        st.session_state.show_sync_details = not st.session_state.get("show_sync_details", False)
+                
+                # Mostrar detalles si se solicitó
+                if st.session_state.get("show_sync_details", False):
+                    with st.expander("📋 Detalles de Sincronización", expanded=True):
+                        st.json(sync_state)
+    except Exception as e:
+        # Silenciar errores del banner para no interrumpir la app
+        pass
+    
     # Header del sidebar
     st.sidebar.markdown("### Zoreza")
     st.sidebar.write(f"**{user['nombre']}**")

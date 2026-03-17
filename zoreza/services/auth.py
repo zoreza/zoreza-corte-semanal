@@ -1,7 +1,7 @@
 from zoreza.db.queries import fetchone
 from zoreza.services.passwords import verify_password
 
-def authenticate(username: str, password: str):
+def authenticate(username: str, password: str) -> dict | None:
     user = fetchone("SELECT * FROM usuarios WHERE username=? AND activo=1", (username,))
     if not user:
         return None

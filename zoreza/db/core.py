@@ -355,14 +355,24 @@ def init_db(seed: bool = True):
         con.commit()
 
     # seed minimal entities if empty
-    n_clientes = con.execute("SELECT COUNT(*) AS n FROM clientes").fetchone()["n"]
+    result = con.execute("SELECT COUNT(*) AS n FROM clientes").fetchone()
+    n_clientes = result["n"] if result else 0
     if n_clientes == 0:
-        admin_id = con.execute("SELECT id FROM usuarios WHERE username='admin'").fetchone()["id"]
+        result = con.execute("SELECT id FROM usuarios WHERE username='admin'").fetchone()
+        if not result:
+            return  # No hay admin, no podemos continuar
+        admin_id = result["id"]
+        
         con.execute(
             "INSERT INTO clientes(nombre,comision_pct,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
             ("Cliente Demo", 0.40, now_iso(), now_iso(), admin_id, admin_id),
         )
-        cliente_id = con.execute("SELECT id FROM clientes WHERE nombre='Cliente Demo'").fetchone()["id"]
+        
+        result = con.execute("SELECT id FROM clientes WHERE nombre='Cliente Demo'").fetchone()
+        if not result:
+            return  # No se pudo crear cliente
+        cliente_id = result["id"]
+        
         con.execute(
             "INSERT INTO maquinas(codigo,cliente_id,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
             ("M-001", cliente_id, now_iso(), now_iso(), admin_id, admin_id),
@@ -375,8 +385,16 @@ def init_db(seed: bool = True):
             "INSERT INTO rutas(nombre,descripcion,activo,created_at,updated_at,created_by,updated_by) VALUES (?,?,1,?,?,?,?)",
             ("Ruta Demo", "Ruta inicial", now_iso(), now_iso(), admin_id, admin_id),
         )
-        ruta_id = con.execute("SELECT id FROM rutas WHERE nombre='Ruta Demo'").fetchone()["id"]
-        op_id = con.execute("SELECT id FROM usuarios WHERE username='operador'").fetchone()["id"]
+        
+        result = con.execute("SELECT id FROM rutas WHERE nombre='Ruta Demo'").fetchone()
+        if not result:
+            return  # No se pudo crear ruta
+        ruta_id = result["id"]
+        
+        result = con.execute("SELECT id FROM usuarios WHERE username='operador'").fetchone()
+        if not result:
+            return  # No hay operador
+        op_id = result["id"]
 
         # Asignar operador a ruta
         con.execute("INSERT INTO usuario_ruta(usuario_id,ruta_id,activo) VALUES (?,?,1)", (op_id, ruta_id))

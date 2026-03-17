@@ -189,6 +189,30 @@ def run_app():
 def login_screen():
     st.title("🧾 Zoreza · Corte Semanal")
     st.caption("Login requerido")
+    
+    # Mostrar diagnóstico de conexión
+    from zoreza.services.connection_diagnostics import diagnose_connection
+    turso_ok, mensaje, detalles = diagnose_connection()
+    
+    if not turso_ok:
+        st.warning(mensaje)
+        with st.expander("🔍 Diagnóstico de conexión"):
+            st.json(detalles)
+            
+            if not detalles["turso_url_found"]:
+                st.error("⚠️ **TURSO_DATABASE_URL no encontrada**")
+                st.info("📝 Configura en Streamlit Cloud → Settings → Secrets")
+            
+            if not detalles["turso_token_found"]:
+                st.error("⚠️ **TURSO_AUTH_TOKEN no encontrado**")
+                st.info("📝 Configura en Streamlit Cloud → Settings → Secrets")
+            
+            if detalles["using_fallback"]:
+                st.warning("⚠️ **Usando SQLite local (los datos se perderán al reiniciar)**")
+    else:
+        st.success(mensaje)
+    
+    st.divider()
     with st.form("login"):
         username = st.text_input("Usuario")
         password = st.text_input("Contraseña", type="password")

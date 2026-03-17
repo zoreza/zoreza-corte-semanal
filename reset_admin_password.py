@@ -31,8 +31,16 @@ def reset_admin_password():
     new_password = "admin123"
     password_hash = hash_password(new_password)
     
+    # Convertir URL de libsql:// a https://
+    if turso_url.startswith("libsql://"):
+        http_url = turso_url.replace("libsql://", "https://")
+    elif turso_url.startswith("http://") or turso_url.startswith("https://"):
+        http_url = turso_url
+    else:
+        http_url = f"https://{turso_url}"
+    
     print(f"🔧 Conectando a Turso...")
-    print(f"   URL: {turso_url[:50]}...")
+    print(f"   URL: {http_url[:50]}...")
     
     # Preparar query SQL
     sql = "UPDATE usuarios SET password_hash = ? WHERE username = 'admin'"
@@ -60,7 +68,7 @@ def reset_admin_password():
         # Ejecutar UPDATE
         print(f"🔄 Actualizando contraseña de 'admin' a '{new_password}'...")
         response = requests.post(
-            f"{turso_url}/v2/pipeline",
+            f"{http_url}/v2/pipeline",
             headers=headers,
             json=request_data,
             timeout=10

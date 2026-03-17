@@ -193,10 +193,48 @@ def login_screen():
         username = st.text_input("Usuario")
         password = st.text_input("Contraseña", type="password")
         submitted = st.form_submit_button("Entrar")
+    
     if submitted:
-        user = authenticate(username.strip(), password)
-        if not user:
-            st.error("Credenciales inválidas o usuario inactivo.")
+        user, error_code = authenticate(username.strip(), password)
+        
+        if error_code == "DB_ERROR":
+            st.error("❌ **Error de conexión con la base de datos**")
+            st.warning("⚠️ No se pudo conectar a la base de datos. Posibles causas:")
+            st.markdown("""
+            - Problema de conexión con Turso
+            - Credenciales de Turso incorrectas o expiradas
+            - Base de datos no inicializada
+            
+            **Solución:** Contacta al administrador del sistema.
+            """)
+            
+            # Mostrar información técnica en expander
+            with st.expander("ℹ️ Información técnica"):
+                from zoreza.services.turso_service import has_turso_credentials, get_turso_config
+                
+                if has_turso_credentials():
+                    url, _ = get_turso_config()
+                    st.code(f"Turso URL: {url[:50]}...", language="text")
+                    st.info("✅ Credenciales de Turso encontradas")
+                else:
+                    st.error("❌ No se encontraron credenciales de Turso")
             return
-        st.session_state.user = user
-        st.rerun()
+        
+        elif error_code == "USER_NOT_FOUND":
+            st.error("❌ **Usuario no encontrado o inactivo**")
+            st.info(f"El usuario '{username}' no existe en el sistema o está desactivado.")
+            return
+        
+        elif error_code == "INVALID_PASSWORD":
+            st.error("❌ **Contraseña incorrecta**")
+            st.info("La contraseña ingresada no es correcta. Verifica e intenta nuevamente.")
+            return
+        
+        elif user:
+            # Login exitoso
+            st.session_state.user = user
+            st.rerun()
+        else:
+            # Error desconocido
+            st.error("❌ Error desconocido durante el login")
+            return

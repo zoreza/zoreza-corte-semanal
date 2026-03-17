@@ -316,8 +316,12 @@ def create_turso_client(url: str, auth_token: str) -> Any:
                         # Fallback: convertir a string
                         args.append({"type": "text", "value": str(param)})
             
+            # Detectar si es operación de escritura
+            is_write = self._is_write_operation(sql)
+            
             # Construir el request para Turso
-            # IMPORTANTE: Usar "close" para hacer commit automático en operaciones de escritura
+            # IMPORTANTE: SIEMPRE incluir "close" para operaciones de escritura
+            # Esto asegura que los cambios se persistan inmediatamente
             request_data = {
                 "requests": [
                     {
@@ -330,8 +334,9 @@ def create_turso_client(url: str, auth_token: str) -> Any:
                 ]
             }
             
-            # Si es una operación de escritura, agregar close para commit automático
-            if close_after and self._is_write_operation(sql):
+            # Para operaciones de escritura, SIEMPRE agregar close para persistir
+            # No depender del parámetro close_after - siempre hacer commit en escrituras
+            if is_write:
                 request_data["requests"].append({"type": "close"})
             
             response = requests.post(
@@ -361,6 +366,19 @@ def create_turso_client(url: str, auth_token: str) -> Any:
             """Ejecuta query y retorna una fila (método de conveniencia)."""
             cursor = self.execute(sql, params)
             return cursor.fetchone()
+        
+        def executemany(self, sql: str, seq_params) -> None:
+            """
+            Ejecuta la misma query SQL múltiples veces con diferentes parámetros.
+            Compatible con sqlite3.executemany().
+            
+            Args:
+                sql: Query SQL a ejecutar
+                seq_params: Secuencia de tuplas de parámetros
+            """
+            # Ejecutar cada set de parámetros individualmente
+            for params in seq_params:
+                self._execute_internal(sql, params)
         
         def executescript(self, script: str) -> None:
             """

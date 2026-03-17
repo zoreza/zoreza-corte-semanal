@@ -5,11 +5,13 @@ Script para crear el usuario admin en Turso si no existe
 import os
 import sys
 import requests
-import hashlib
 
-def hash_password(password: str) -> str:
-    """Genera hash SHA-256 de la contraseña."""
-    return hashlib.sha256(password.encode()).hexdigest()
+# Importar la función correcta de hashing
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from zoreza.services.passwords import hash_password as pbkdf2_hash_password
+
+# Usar la función de hashing del sistema (PBKDF2)
+hash_password = pbkdf2_hash_password
 
 def convert_url(url: str) -> str:
     """Convierte URL de libsql:// a https://"""

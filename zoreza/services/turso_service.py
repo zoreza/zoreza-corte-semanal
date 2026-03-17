@@ -233,11 +233,40 @@ def create_turso_client(url: str, auth_token: str) -> Any:
                 response = self._result["results"][0]["response"]
                 if "result" in response:
                     result = response["result"]
-                    if "rows" in result and "columns" in result:
-                        columns = result["columns"]
+                    if "rows" in result:
+                        # Extraer nombres de columnas
+                        if "cols" in result:
+                            columns = [col["name"] for col in result["cols"]]
+                        elif "columns" in result:
+                            columns = result["columns"]
+                        else:
+                            columns = []
+                        
                         rows = result["rows"]
-                        # Convertir cada fila a TursoRow
-                        return [TursoRow(columns, row) for row in rows]
+                        
+                        # Convertir cada fila extrayendo valores de los diccionarios
+                        converted_rows = []
+                        for row in rows:
+                            # Cada row es una lista de diccionarios {'type': 'text', 'value': 'admin'}
+                            # Necesitamos extraer solo los valores
+                            if isinstance(row, list) and len(row) > 0:
+                                if isinstance(row[0], dict):
+                                    # Formato nuevo de Turso: [{'type': 'text', 'value': 'admin'}, ...]
+                                    # Manejar valores NULL que pueden no tener 'value'
+                                    converted_row = []
+                                    for cell in row:
+                                        if isinstance(cell, dict):
+                                            # Si tiene 'value', usarlo; si no, es NULL
+                                            converted_row.append(cell.get('value', None))
+                                        else:
+                                            # Valor directo
+                                            converted_row.append(cell)
+                                else:
+                                    # Formato antiguo: ['admin', ...]
+                                    converted_row = row
+                                converted_rows.append(TursoRow(columns, converted_row))
+                        
+                        return converted_rows
             
             return []
     

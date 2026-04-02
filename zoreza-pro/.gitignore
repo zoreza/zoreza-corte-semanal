@@ -32,3 +32,6 @@ web/dist/
 *.swp
 *.swo
 .DS_Store
+
+# Java heap dumps
+*.hprof

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <rect width="400" height="400" fill="#000"/>
+  <g transform="translate(200,148)">
+    <!-- Top bar -->
+    <rect x="-80" y="-115" width="160" height="32" fill="#fff"/>
+    <!-- Diagonal of Z (solid with clipped lightning cuts) -->
+    <polygon points="80,-83 -38,43 -80,83 -80,83 38,-43 80,-83" fill="#fff"/>
+    <!-- Thicken diagonal: two parallelogram halves -->
+    <polygon points="80,-83 48,-83 -80,83 -48,83" fill="#fff"/>
+    <!-- Bottom bar -->
+    <rect x="-80" y="83" width="160" height="32" fill="#fff"/>
+    <!-- Lightning bolt slashes (black cuts through diagonal) -->
+    <line x1="-5" y1="-30" x2="25" y2="-65" stroke="#000" stroke-width="7" stroke-linecap="round"/>
+    <line x1="-20" y1="0" x2="10" y2="-35" stroke="#000" stroke-width="7" stroke-linecap="round"/>
+    <line x1="-35" y1="30" x2="-5" y2="-5" stroke="#000" stroke-width="7" stroke-linecap="round"/>
+  </g>
+  <!-- ZOREZA text -->
+  <text x="200" y="310" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-size="52" fill="#fff" letter-spacing="8">ZOREZA</text>
+  <!-- LABS text -->
+  <text x="200" y="360" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-size="42" fill="#E87C1E" letter-spacing="10">LABS</text>
+</svg>

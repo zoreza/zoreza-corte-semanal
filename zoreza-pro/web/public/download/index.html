@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zoreza Pro — Descarga la App</title>
+  <meta name="description" content="Descarga la app Zoreza Pro para Android. Sistema de corte semanal para máquinas de vending y arcade.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #151515;
+      --surface-hover: #1e1e1e;
+      --border: #2a2a2a;
+      --text: #f0f0f0;
+      --text-secondary: #999;
+      --accent: #E87C1E;
+      --accent-hover: #f59132;
+      --accent-glow: rgba(232, 124, 30, 0.15);
+      --green: #22c55e;
+      --radius: 16px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Hero Section */
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 24px 60px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .logo-container {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 32px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo-container svg {
+      width: 100%;
+      height: 100%;
+      border-radius: 24px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero h1 span {
+      color: var(--accent);
+    }
+
+    .hero .subtitle {
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      color: var(--text-secondary);
+      max-width: 520px;
+      margin-bottom: 40px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Download Button */
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1.15rem;
+      font-weight: 700;
+      padding: 18px 40px;
+      border-radius: 60px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 4px 24px rgba(232, 124, 30, 0.3);
+    }
+
+    .download-btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(232, 124, 30, 0.4);
+    }
+
+    .download-btn svg {
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+    }
+
+    .version-badge {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 6px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      position: relative;
+      z-index: 1;
+    }
+
+    .version-badge .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    /* Features Grid */
+    .features {
+      padding: 40px 24px 60px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .features h2 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 32px;
+      font-weight: 700;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: border-color 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--accent);
+    }
+
+    .feature-card .icon {
+      font-size: 2rem;
+      margin-bottom: 12px;
+    }
+
+    .feature-card h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Docs Section */
+    .docs {
+      padding: 40px 24px 60px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .docs h2 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 32px;
+      font-weight: 700;
+    }
+
+    .docs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .doc-link {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.2s;
+    }
+
+    .doc-link:hover {
+      border-color: var(--accent);
+      background: var(--surface-hover);
+    }
+
+    .doc-link .doc-icon {
+      font-size: 1.8rem;
+      flex-shrink: 0;
+      line-height: 1;
+      margin-top: 2px;
+    }
+
+    .doc-link h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .doc-link p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    /* Requirements */
+    .requirements {
+      padding: 20px 24px 60px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .requirements h2 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 24px;
+      font-weight: 700;
+    }
+
+    .req-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .req-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 20px;
+      font-size: 0.9rem;
+    }
+
+    .req-item .check {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: auto;
+      padding: 32px 24px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer p {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Install Steps */
+    .install-steps {
+      padding: 20px 24px 60px;
+      max-width: 700px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .install-steps h2 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 32px;
+      font-weight: 700;
+    }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      align-items: flex-start;
+    }
+
+    .step-number {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.95rem;
+    }
+
+    .step-content h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .step-content p {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    /* Divider */
+    .divider {
+      width: 60px;
+      height: 3px;
+      background: var(--accent);
+      border-radius: 2px;
+      margin: 0 auto 40px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="logo-container">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+        <rect width="400" height="400" rx="60" fill="#000"/>
+        <g transform="translate(200,148)">
+          <rect x="-80" y="-115" width="160" height="32" fill="#fff"/>
+          <polygon points="80,-83 48,-83 -80,83 -48,83" fill="#fff"/>
+          <rect x="-80" y="83" width="160" height="32" fill="#fff"/>
+          <line x1="-5" y1="-30" x2="25" y2="-65" stroke="#000" stroke-width="7" stroke-linecap="round"/>
+          <line x1="-20" y1="0" x2="10" y2="-35" stroke="#000" stroke-width="7" stroke-linecap="round"/>
+          <line x1="-35" y1="30" x2="-5" y2="-5" stroke="#000" stroke-width="7" stroke-linecap="round"/>
+        </g>
+        <text x="200" y="310" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-size="52" fill="#fff" letter-spacing="8">ZOREZA</text>
+        <text x="200" y="360" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-size="42" fill="#E87C1E" letter-spacing="10">LABS</text>
+      </svg>
+    </div>
+
+    <h1>Zoreza <span>Pro</span></h1>
+    <p class="subtitle">Sistema de corte semanal para máquinas de vending y arcade. Captura, calcula y sincroniza desde tu dispositivo Android.</p>
+
+    <a href="/zoreza-admin/api/releases/latest/download" class="download-btn" id="downloadBtn">
+      <svg viewBox="0 0 24 24"><path d="M17 18v1H6v-1h11zm-.5-6.6l-.7-.7-3.8 3.7V4h-1v10.4l-3.8-3.8-.7.7 5 5 5-5z"/></svg>
+      Descargar APK
+    </a>
+
+    <div class="version-badge" id="versionBadge">
+      <span class="dot"></span>
+      Cargando versión...
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+    <h2>Características</h2>
+    <div class="divider"></div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="icon">📱</div>
+        <h3>Offline First</h3>
+        <p>Trabaja sin conexión en campo. Tus datos se sincronizan automáticamente cuando vuelvas a tener señal.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🧾</div>
+        <h3>Tickets Térmicos</h3>
+        <p>Imprime recibos directamente desde la app vía Bluetooth con impresoras térmicas de 58mm.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">📊</div>
+        <h3>Cálculos Automáticos</h3>
+        <p>Recaudable, comisiones, diferencias con score y contadores se calculan al instante.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🔒</div>
+        <h3>Seguro y Privado</h3>
+        <p>Autenticación JWT, datos aislados por negocio y base de datos independiente por tenant.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🔄</div>
+        <h3>Auto-Actualización</h3>
+        <p>La app detecta nuevas versiones y te guía para actualizar sin necesidad de tiendas de apps.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">👥</div>
+        <h3>Multi-Rol</h3>
+        <p>Operadores capturan en campo, supervisores revisan y administradores tienen control total.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Install Steps -->
+  <section class="install-steps">
+    <h2>Cómo Instalar</h2>
+    <div class="divider"></div>
+
+    <div class="step">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <h3>Descarga el APK</h3>
+        <p>Presiona el botón de descarga de arriba. El archivo se guardará en tu carpeta de descargas.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <h3>Permite la instalación</h3>
+        <p>Si tu dispositivo lo pide, ve a Ajustes → Seguridad y activa "Orígenes desconocidos" o permite instalar desde tu navegador.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <h3>Instala la app</h3>
+        <p>Abre el archivo APK descargado y sigue las instrucciones del instalador de Android.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">4</div>
+      <div class="step-content">
+        <h3>Inicia sesión</h3>
+        <p>Abre Zoreza Pro, ingresa el servidor y tus credenciales proporcionadas por tu administrador.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Requirements -->
+  <section class="requirements">
+    <h2>Requisitos</h2>
+    <div class="divider"></div>
+    <div class="req-list">
+      <div class="req-item"><span class="check">✓</span> Android 6.0 o superior</div>
+      <div class="req-item"><span class="check">✓</span> Conexión a internet (primer uso)</div>
+      <div class="req-item"><span class="check">✓</span> ~50 MB de espacio</div>
+      <div class="req-item"><span class="check">✓</span> Bluetooth (opcional, tickets)</div>
+    </div>
+  </section>
+
+  <!-- Documentation Links -->
+  <section class="docs">
+    <h2>Documentación</h2>
+    <div class="divider"></div>
+    <div class="docs-grid">
+      <a href="https://github.com/zoreza-labs/zoreza-pro/blob/main/app/docs/MANUAL_APP.md" class="doc-link" target="_blank" rel="noopener">
+        <div class="doc-icon">📱</div>
+        <div>
+          <h3>Manual de la App Android</h3>
+          <p>Guía completa para operadores: captura de máquinas, gastos, sincronización e impresión.</p>
+        </div>
+      </a>
+      <a href="https://github.com/zoreza-labs/zoreza-pro/blob/main/web/docs/MANUAL_WEB.md" class="doc-link" target="_blank" rel="noopener">
+        <div class="doc-icon">🌐</div>
+        <div>
+          <h3>Manual del Sitio Web</h3>
+          <p>Guía para administradores: dashboard, clientes, máquinas, rutas, reportes y configuración.</p>
+        </div>
+      </a>
+      <a href="https://github.com/zoreza-labs/zoreza-pro/blob/main/web/docs/MANUAL_SUPERADMIN.md" class="doc-link" target="_blank" rel="noopener">
+        <div class="doc-icon">⚙️</div>
+        <div>
+          <h3>Manual de Super Admin</h3>
+          <p>Gestión de tenants, releases APK y administración del sistema multi-tenant.</p>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>&copy; 2025 <a href="#">Zoreza Labs</a>. Todos los derechos reservados.</p>
+  </footer>
+
+  <script>
+    // Fetch latest version info and update the badge
+    (function() {
+      var badge = document.getElementById('versionBadge');
+      var btn = document.getElementById('downloadBtn');
+
+      fetch('/zoreza-admin/api/releases/latest')
+        .then(function(r) { return r.ok ? r.json() : Promise.reject(); })
+        .then(function(data) {
+          badge.innerHTML = '<span class="dot"></span>Versión ' + data.version_name + ' &middot; ' + formatBytes(data.file_size);
+          if (data.uuid) {
+            btn.href = '/zoreza-admin/api/releases/' + data.uuid + '/download';
+          }
+        })
+        .catch(function() {
+          badge.innerHTML = '<span class="dot" style="background:#666"></span>No hay versiones disponibles';
+          btn.style.opacity = '0.5';
+          btn.style.pointerEvents = 'none';
+        });
+
+      function formatBytes(bytes) {
+        if (!bytes) return '';
+        var mb = bytes / (1024 * 1024);
+        return mb.toFixed(1) + ' MB';
+      }
+    })();
+  </script>
+</body>
+</html>

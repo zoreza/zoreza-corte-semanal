@@ -35,3 +35,6 @@ web/dist/
 
 # Java heap dumps
 *.hprof
+
+# Server logs
+nohup.out

@@ -7,15 +7,20 @@ export default function Maquinas() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
 
-  const load = () => {
+  useEffect(() => {
+    Promise.all([getMaquinas(), getClientes()])
+      .then(([m, c]) => { setItems(m); setClientes(c); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const reload = () => {
     setLoading(true);
     Promise.all([getMaquinas(), getClientes()])
       .then(([m, c]) => { setItems(m); setClientes(c); })
       .catch(() => {})
       .finally(() => setLoading(false));
   };
-
-  useEffect(load, []);
 
   const handleSave = async (data) => {
     if (typeof modal === 'object' && modal?.uuid) {
@@ -24,7 +29,7 @@ export default function Maquinas() {
       await createMaquina(data);
     }
     setModal(null);
-    load();
+    reload();
   };
 
   const clienteMap = Object.fromEntries(clientes.map((c) => [c.uuid, c.nombre]));
@@ -55,7 +60,7 @@ export default function Maquinas() {
                   {' '}
                   <button
                     className={`btn btn-sm ${m.activo ? 'btn-danger' : 'btn-success'}`}
-                    onClick={async () => { await updateMaquina(m.uuid, { activo: !m.activo }); load(); }}
+                    onClick={async () => { await updateMaquina(m.uuid, { activo: !m.activo }); reload(); }}
                   >
                     {m.activo ? 'Desactivar' : 'Activar'}
                   </button>

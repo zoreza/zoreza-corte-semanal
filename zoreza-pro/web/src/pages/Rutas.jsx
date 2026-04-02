@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { getRutas, createRuta, updateRuta, getRutaMaquinas, getMaquinas, assignMaquinaToRuta, unassignMaquinaFromRuta } from '../api';
 
 export default function Rutas() {
@@ -7,12 +7,14 @@ export default function Rutas() {
   const [modal, setModal] = useState(null);
   const [assignModal, setAssignModal] = useState(null); // ruta object
 
-  const load = useCallback(() => {
-    setLoading(true);
+  useEffect(() => {
     getRutas().then(setRutas).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  useEffect(load, [load]);
+  const reload = () => {
+    setLoading(true);
+    getRutas().then(setRutas).catch(() => {}).finally(() => setLoading(false));
+  };
 
   const handleSave = async (data) => {
     if (typeof modal === 'object' && modal?.uuid) {
@@ -21,7 +23,7 @@ export default function Rutas() {
       await createRuta(data);
     }
     setModal(null);
-    load();
+    reload();
   };
 
   if (loading) return <div className="spinner" />;
@@ -51,7 +53,7 @@ export default function Rutas() {
                   {' '}
                   <button
                     className={`btn btn-sm ${r.activo ? 'btn-danger' : 'btn-success'}`}
-                    onClick={async () => { await updateRuta(r.uuid, { activo: !r.activo }); load(); }}
+                    onClick={async () => { await updateRuta(r.uuid, { activo: !r.activo }); reload(); }}
                   >
                     {r.activo ? 'Desactivar' : 'Activar'}
                   </button>
@@ -129,26 +131,31 @@ function AssignMaquinasModal({ ruta, onClose }) {
   const [allMaquinas, setAllMaquinas] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(() => {
-    setLoading(true);
+  useEffect(() => {
     Promise.all([getRutaMaquinas(ruta.uuid), getMaquinas()])
       .then(([a, all]) => { setAssigned(a); setAllMaquinas(all); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [ruta.uuid]);
 
-  useEffect(load, [load]);
+  const reload = () => {
+    setLoading(true);
+    Promise.all([getRutaMaquinas(ruta.uuid), getMaquinas()])
+      .then(([a, all]) => { setAssigned(a); setAllMaquinas(all); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
 
   const assignedIds = new Set(assigned.map((m) => m.uuid));
 
   const handleAdd = async (maqId) => {
     await assignMaquinaToRuta(ruta.uuid, maqId);
-    load();
+    reload();
   };
 
   const handleRemove = async (maqId) => {
     await unassignMaquinaFromRuta(ruta.uuid, maqId);
-    load();
+    reload();
   };
 
   return (

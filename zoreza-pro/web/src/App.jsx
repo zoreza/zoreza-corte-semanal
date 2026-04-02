@@ -16,18 +16,17 @@ import Configuracion from './pages/Configuracion';
 
 function App() {
   const [user, setUser] = useState(null);
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(() => isLoggedIn());
 
   useEffect(() => {
-    if (isLoggedIn()) {
-      getMe()
-        .then(setUser)
-        .catch(() => setUser(null))
-        .finally(() => setChecking(false));
-    } else {
-      setChecking(false);
-    }
-  }, []);
+    if (!checking) return;
+    let cancelled = false;
+    getMe()
+      .then((u) => { if (!cancelled) setUser(u); })
+      .catch(() => { if (!cancelled) setUser(null); })
+      .finally(() => { if (!cancelled) setChecking(false); });
+    return () => { cancelled = true; };
+  }, [checking]);
 
   if (checking) return <div className="spinner" />;
 

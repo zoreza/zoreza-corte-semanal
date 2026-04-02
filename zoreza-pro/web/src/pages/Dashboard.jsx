@@ -102,7 +102,7 @@ export default function Dashboard() {
             {gastosByCat.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie data={gastosByCat} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={80} label={({ name, value, percent }) => `${name} ${money(value)}`} labelLine={{ stroke: '#718096' }} fontSize={12}>
+                  <Pie data={gastosByCat} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={80} label={({ name, value }) => `${name} ${money(value)}`} labelLine={{ stroke: '#718096' }} fontSize={12}>
                     {gastosByCat.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Legend wrapperStyle={{ fontSize: 12 }} />

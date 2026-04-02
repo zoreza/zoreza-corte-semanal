@@ -14,7 +14,6 @@ export default function Cortes() {
   }, []);
 
   useEffect(() => {
-    setLoading(true);
     const params = {};
     if (filters.estado) params.estado = filters.estado;
     if (filters.cliente_id) params.cliente_id = filters.cliente_id;

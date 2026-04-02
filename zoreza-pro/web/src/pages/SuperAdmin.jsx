@@ -2,7 +2,7 @@
  * SuperAdmin panel — Zoreza Labs tenant management.
  * Accessed at /zoreza-admin/...
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 
 const SA_API = '/zoreza-admin/api';
@@ -51,11 +51,16 @@ function saLogout() {
 
 export default function SuperAdmin() {
   const [admin, setAdmin] = useState(null);
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(() => !!saToken);
 
   useEffect(() => {
-    if (!saToken) { setChecking(false); return; }
-    saRequest('/auth/me').then(setAdmin).catch(() => { saLogout(); setAdmin(null); }).finally(() => setChecking(false));
+    if (!saToken) return;
+    let cancelled = false;
+    saRequest('/auth/me')
+      .then((u) => { if (!cancelled) setAdmin(u); })
+      .catch(() => { if (!cancelled) { saLogout(); setAdmin(null); } })
+      .finally(() => { if (!cancelled) setChecking(false); });
+    return () => { cancelled = true; };
   }, []);
 
   if (checking) return <div style={dark.page}><div className="spinner" /></div>;
@@ -159,11 +164,13 @@ function TenantsPage() {
   const [modal, setModal] = useState(false);
   const [pwModal, setPwModal] = useState(null); // slug for password reset
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     saRequest('/tenants').then(setTenants).catch(() => {}).finally(() => setLoading(false));
-  };
-  useEffect(load, []);
+  }, []);
+  useEffect(() => {
+    saRequest('/tenants').then(setTenants).catch(() => {}).finally(() => setLoading(false));
+  }, []);
 
   if (loading) return <div className="spinner" />;
 
@@ -392,11 +399,13 @@ function ReleasesPage() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     saRequest('/releases').then(setReleases).catch(() => {}).finally(() => setLoading(false));
-  };
-  useEffect(load, []);
+  }, []);
+  useEffect(() => {
+    saRequest('/releases').then(setReleases).catch(() => {}).finally(() => setLoading(false));
+  }, []);
 
   const formatSize = (bytes) => {
     if (!bytes) return '—';

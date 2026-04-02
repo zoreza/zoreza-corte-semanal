@@ -165,7 +165,10 @@ function ConfigField({ label, description, value, saving, onSave }) {
   const [val, setVal] = useState(value);
   const [dirty, setDirty] = useState(false);
 
-  useEffect(() => { setVal(value); setDirty(false); }, [value]);
+  // Reset local state when prop changes — safe: derived from prop, no cascade
+  if (val !== value && !dirty) {
+    setVal(value);
+  }
 
   const handleChange = (e) => {
     setVal(e.target.value);

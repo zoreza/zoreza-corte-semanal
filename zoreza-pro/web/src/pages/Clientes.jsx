@@ -6,12 +6,14 @@ export default function Clientes() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null); // null | 'create' | item
 
-  const load = () => {
+  useEffect(() => {
+    getClientes().then(setItems).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  const reload = () => {
     setLoading(true);
     getClientes().then(setItems).catch(() => {}).finally(() => setLoading(false));
   };
-
-  useEffect(load, []);
 
   const handleSave = async (data) => {
     if (typeof modal === 'object' && modal?.uuid) {
@@ -20,7 +22,7 @@ export default function Clientes() {
       await createCliente(data);
     }
     setModal(null);
-    load();
+    reload();
   };
 
   if (loading) return <div className="spinner" />;
@@ -50,7 +52,7 @@ export default function Clientes() {
                   {' '}
                   <button
                     className={`btn btn-sm ${c.activo ? 'btn-danger' : 'btn-success'}`}
-                    onClick={async () => { await updateCliente(c.uuid, { activo: !c.activo }); load(); }}
+                    onClick={async () => { await updateCliente(c.uuid, { activo: !c.activo }); reload(); }}
                   >
                     {c.activo ? 'Desactivar' : 'Activar'}
                   </button>

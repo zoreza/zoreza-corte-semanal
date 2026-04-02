@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { logout, getAllConfig } from '../api';
 
 const NAV = [
@@ -15,7 +15,6 @@ const NAV = [
 ];
 
 export default function Layout({ user, setUser, children }) {
-  const location = useLocation();
   const [logo, setLogo] = useState(null);
   const [brandName, setBrandName] = useState('Zoreza Pro');
 

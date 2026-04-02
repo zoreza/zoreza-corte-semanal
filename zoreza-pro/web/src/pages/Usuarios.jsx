@@ -8,12 +8,14 @@ export default function Usuarios() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
 
-  const load = () => {
+  useEffect(() => {
+    getUsuarios().then(setItems).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  const reload = () => {
     setLoading(true);
     getUsuarios().then(setItems).catch(() => {}).finally(() => setLoading(false));
   };
-
-  useEffect(load, []);
 
   const handleSave = async (data) => {
     if (typeof modal === 'object' && modal?.uuid) {
@@ -22,7 +24,7 @@ export default function Usuarios() {
       await createUsuario(data);
     }
     setModal(null);
-    load();
+    reload();
   };
 
   if (loading) return <div className="spinner" />;
@@ -53,7 +55,7 @@ export default function Usuarios() {
                   {' '}
                   <button
                     className={`btn btn-sm ${u.activo ? 'btn-danger' : 'btn-success'}`}
-                    onClick={async () => { await updateUsuario(u.uuid, { activo: !u.activo }); load(); }}
+                    onClick={async () => { await updateUsuario(u.uuid, { activo: !u.activo }); reload(); }}
                   >
                     {u.activo ? 'Desactivar' : 'Activar'}
                   </button>

@@ -7,8 +7,7 @@ export default function Gastos() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
 
-  const load = () => {
-    setLoading(true);
+  const doFetch = () =>
     Promise.all([
       getGastos(),
       getConfig('categorias_gasto').catch(() => ({ value: 'OTRO' })),
@@ -19,20 +18,24 @@ export default function Gastos() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  };
 
-  useEffect(load, []);
+  useEffect(() => { doFetch(); }, []);
+
+  const reload = () => {
+    setLoading(true);
+    doFetch();
+  };
 
   const handleSave = async (data) => {
     await createGasto(data);
     setModal(false);
-    load();
+    reload();
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Eliminar este gasto?')) return;
     await deleteGasto(id);
-    load();
+    reload();
   };
 
   const fmt = (n) => `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;

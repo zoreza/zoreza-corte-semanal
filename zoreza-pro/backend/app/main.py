@@ -43,6 +43,9 @@ async def lifespan(app: FastAPI):
     # Migrate existing single-tenant DB as the first tenant if needed
     await _migrate_existing_db()
 
+    # Ensure new tables exist in all tenant DBs (e.g. webauthn_credentials)
+    await _sync_tenant_schemas()
+
     yield
 
     # On shutdown: dispose engines
@@ -85,6 +88,22 @@ async def _migrate_existing_db() -> None:
             notas="Migrado automáticamente desde la instalación single-tenant.",
         ))
         await db.commit()
+
+
+async def _sync_tenant_schemas() -> None:
+    """Run create_all on every existing tenant DB so new tables are added."""
+    from sqlalchemy import select
+    from app.db.master_session import master_session_factory
+    from app.models.tenant import Tenant
+    from app.db.tenant_session import create_tenant_tables
+    import app.models  # noqa: F401 — ensure all models are in Base.metadata
+
+    async with master_session_factory() as db:
+        result = await db.execute(select(Tenant.slug).where(Tenant.activo.is_(True)))
+        slugs = result.scalars().all()
+
+    for slug in slugs:
+        await create_tenant_tables(slug)
 
 
 def create_app() -> FastAPI:

@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAllConfig, setConfig, uploadLogo } from '../api';
+import {
+  getAllConfig, setConfig, uploadLogo,
+  supportsPasskeys, passkeyRegisterStart, passkeyRegisterFinish,
+  passkeyList, passkeyDelete, browserPasskeyRegister,
+} from '../api';
 
 const CONFIG_LABELS = {
   nombre_comercio: { label: 'Nombre del Comercio', desc: 'Se muestra en el ticket y encabezados' },
@@ -157,6 +161,9 @@ export default function Configuracion() {
           <button className="btn btn-primary" onClick={addCategoria} disabled={!newCat.trim()}>Agregar</button>
         </div>
       </div>
+
+      {/* Passkeys */}
+      {supportsPasskeys() && <PasskeyManager />}
     </div>
   );
 }
@@ -195,6 +202,124 @@ function ConfigField({ label, description, value, saving, onSave }) {
       >
         {saving ? 'Guardando...' : 'Guardar'}
       </button>
+    </div>
+  );
+}
+
+function PasskeyManager() {
+  const [credentials, setCredentials] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [registering, setRegistering] = useState(false);
+  const [deviceName, setDeviceName] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const loadCredentials = useCallback(async () => {
+    try {
+      const list = await passkeyList();
+      setCredentials(list);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadCredentials(); }, [loadCredentials]);
+
+  const handleRegister = async () => {
+    setError('');
+    setSuccess('');
+    setRegistering(true);
+    try {
+      const { options } = await passkeyRegisterStart();
+      const credential = await browserPasskeyRegister(options);
+      await passkeyRegisterFinish(credential, deviceName || 'Mi dispositivo');
+      setDeviceName('');
+      setSuccess('Passkey registrada exitosamente');
+      await loadCredentials();
+    } catch (err) {
+      if (err.name === 'NotAllowedError') {
+        setError('Registro cancelado');
+      } else {
+        setError(err.message || 'Error al registrar passkey');
+      }
+    } finally {
+      setRegistering(false);
+    }
+  };
+
+  const handleDelete = async (uuid, name) => {
+    if (!confirm(`¿Eliminar la passkey "${name || 'Sin nombre'}"?`)) return;
+    try {
+      await passkeyDelete(uuid);
+      setCredentials((c) => c.filter((cr) => cr.uuid !== uuid));
+      setSuccess('Passkey eliminada');
+    } catch (err) {
+      setError(err.message || 'Error al eliminar');
+    }
+  };
+
+  return (
+    <div className="card mb-24">
+      <h3 style={{ marginBottom: 4 }}>🔑 Passkeys</h3>
+      <p style={{ fontSize: '0.85rem', color: '#718096', marginBottom: 16 }}>
+        Las passkeys te permiten iniciar sesión sin contraseña usando huella, Face ID o llave de seguridad.
+      </p>
+
+      {error && <div className="error-msg" style={{ marginBottom: 12 }}>{error}</div>}
+      {success && <div style={{ background: '#d4edda', color: '#155724', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: '0.9rem' }}>{success}</div>}
+
+      {/* Registered passkeys */}
+      {loading ? (
+        <div className="spinner" />
+      ) : credentials.length > 0 ? (
+        <table className="table" style={{ marginBottom: 16 }}>
+          <thead>
+            <tr>
+              <th>Dispositivo</th>
+              <th>Registrada</th>
+              <th>Usos</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {credentials.map((c) => (
+              <tr key={c.uuid}>
+                <td>{c.device_name || 'Sin nombre'} {c.backed_up && '☁️'}</td>
+                <td>{new Date(c.created_at).toLocaleDateString('es-MX')}</td>
+                <td>{c.sign_count}</td>
+                <td>
+                  <button
+                    className="btn btn-outline"
+                    style={{ padding: '4px 8px', fontSize: '0.8rem', color: 'var(--danger)' }}
+                    onClick={() => handleDelete(c.uuid, c.device_name)}
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p style={{ color: '#718096', marginBottom: 16 }}>No tienes passkeys registradas.</p>
+      )}
+
+      {/* Register new passkey */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: '0.85rem' }}>Nombre del dispositivo</label>
+          <input
+            value={deviceName}
+            onChange={(e) => setDeviceName(e.target.value)}
+            placeholder="Ej: Mi laptop, Teléfono de trabajo..."
+          />
+        </div>
+        <button className="btn btn-primary" onClick={handleRegister} disabled={registering} style={{ whiteSpace: 'nowrap' }}>
+          {registering ? 'Registrando...' : '+ Registrar Passkey'}
+        </button>
+      </div>
     </div>
   );
 }

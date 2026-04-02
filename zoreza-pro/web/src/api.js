@@ -167,3 +167,97 @@ export const uploadLogo = async (file) => {
   if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail || `Error ${res.status}`); }
   return res.json();
 };
+
+// Passkeys / WebAuthn
+export const passkeyRegisterStart = () =>
+  request('/passkeys/register/start', { method: 'POST', body: '{}' });
+export const passkeyRegisterFinish = (credential, deviceName) =>
+  request('/passkeys/register/finish', {
+    method: 'POST',
+    body: JSON.stringify({ credential: JSON.stringify(credential), device_name: deviceName }),
+  });
+export const passkeyAuthStart = (username) =>
+  request('/passkeys/authenticate/start', {
+    method: 'POST',
+    body: JSON.stringify({ username: username || null }),
+  });
+export const passkeyAuthFinish = (credential, username) =>
+  request('/passkeys/authenticate/finish', {
+    method: 'POST',
+    body: JSON.stringify({ credential: JSON.stringify(credential), username: username || null }),
+  });
+export const passkeyList = () => request('/passkeys/credentials');
+export const passkeyDelete = (uuid) =>
+  request(`/passkeys/credentials/${uuid}`, { method: 'DELETE' });
+
+// WebAuthn browser helpers
+export function supportsPasskeys() {
+  return !!(window.PublicKeyCredential && navigator.credentials);
+}
+
+export async function browserPasskeyRegister(optionsJson) {
+  const options = typeof optionsJson === 'string' ? JSON.parse(optionsJson) : optionsJson;
+  options.challenge = _base64urlToBuffer(options.challenge);
+  options.user.id = _base64urlToBuffer(options.user.id);
+  if (options.excludeCredentials) {
+    options.excludeCredentials = options.excludeCredentials.map(c => ({
+      ...c, id: _base64urlToBuffer(c.id),
+    }));
+  }
+  const credential = await navigator.credentials.create({ publicKey: options });
+  return _credentialToJSON(credential);
+}
+
+export async function browserPasskeyAuth(optionsJson) {
+  const options = typeof optionsJson === 'string' ? JSON.parse(optionsJson) : optionsJson;
+  options.challenge = _base64urlToBuffer(options.challenge);
+  if (options.allowCredentials) {
+    options.allowCredentials = options.allowCredentials.map(c => ({
+      ...c, id: _base64urlToBuffer(c.id),
+    }));
+  }
+  const credential = await navigator.credentials.get({ publicKey: options });
+  return _credentialToJSON(credential);
+}
+
+function _base64urlToBuffer(base64url) {
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = base64.length % 4 === 0 ? '' : '='.repeat(4 - (base64.length % 4));
+  const binary = atob(base64 + pad);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function _bufferToBase64url(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function _credentialToJSON(cred) {
+  const json = {
+    id: cred.id,
+    rawId: _bufferToBase64url(cred.rawId),
+    type: cred.type,
+    response: {},
+  };
+  if (cred.response.attestationObject) {
+    json.response.attestationObject = _bufferToBase64url(cred.response.attestationObject);
+    json.response.clientDataJSON = _bufferToBase64url(cred.response.clientDataJSON);
+  }
+  if (cred.response.authenticatorData) {
+    json.response.authenticatorData = _bufferToBase64url(cred.response.authenticatorData);
+    json.response.clientDataJSON = _bufferToBase64url(cred.response.clientDataJSON);
+    json.response.signature = _bufferToBase64url(cred.response.signature);
+    if (cred.response.userHandle) {
+      json.response.userHandle = _bufferToBase64url(cred.response.userHandle);
+    }
+  }
+  if (cred.authenticatorAttachment) json.authenticatorAttachment = cred.authenticatorAttachment;
+  if (typeof cred.getClientExtensionResults === 'function') {
+    json.clientExtensionResults = cred.getClientExtensionResults();
+  }
+  return json;
+}

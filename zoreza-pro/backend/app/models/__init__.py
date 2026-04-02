@@ -13,3 +13,4 @@ from app.models.ruta import Ruta  # noqa: F401
 from app.models.usuario import Usuario  # noqa: F401
 from app.models.usuario_ruta import UsuarioRuta  # noqa: F401
 from app.models.maquina_ruta import MaquinaRuta  # noqa: F401
+from app.models.webauthn_credential import WebAuthnCredential  # noqa: F401

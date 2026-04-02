@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, clientes, config, cortes, dashboard, gastos, maquinas, rutas, usuarios, catalogs, sync
+from app.api.v1.endpoints import auth, clientes, config, cortes, dashboard, gastos, maquinas, passkeys, rutas, usuarios, catalogs, sync
 
 router = APIRouter()
 
@@ -17,3 +17,4 @@ router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 router.include_router(catalogs.router, prefix="/catalogs", tags=["Catálogos"])
 router.include_router(config.router, prefix="/config", tags=["Configuración"])
 router.include_router(sync.router, prefix="/sync", tags=["Sincronización"])
+router.include_router(passkeys.router, prefix="/passkeys", tags=["Passkeys"])
